@@ -6,7 +6,7 @@
 using namespace std;
 
 int main() {
-    auto lines = load_input("input19");
+    auto lines = load_input("input##");
     for (auto line : lines) {
         std::cout << line << std::endl;
     }
