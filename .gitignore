@@ -4,3 +4,9 @@ sample*
 .ipynb_checkpoints/
 *.exe
 boost_1_78_0/
+
+debug/
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
