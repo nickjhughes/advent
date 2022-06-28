@@ -15,7 +15,7 @@ fn get_frequency_changes() -> Vec<i64> {
 }
 
 pub fn part1(frequency_changes: Option<Vec<i64>>) -> i64 {
-    let frequency_changes = frequency_changes.unwrap_or(get_frequency_changes());
+    let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
     let mut frequency: i64 = 0;
     for frequency_change in frequency_changes {
         frequency += frequency_change;
@@ -24,7 +24,7 @@ pub fn part1(frequency_changes: Option<Vec<i64>>) -> i64 {
 }
 
 pub fn part2(frequency_changes: Option<Vec<i64>>) -> i64 {
-    let frequency_changes = frequency_changes.unwrap_or(get_frequency_changes());
+    let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
     let mut frequency: i64 = 0;
     let mut frequencies_seen = HashSet::from([0]);
 
