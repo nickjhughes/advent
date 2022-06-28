@@ -1,5 +1,13 @@
-pub mod day_01;
-pub mod day_02;
+automod::dir!("src/days");
+
+macro_rules! day_functions {
+    ($day:ident) => {
+        DayFunctions {
+            part1: $day::part1,
+            part2: $day::part2,
+        }
+    };
+}
 
 pub struct DayFunctions {
     pub part1: fn() -> String,
@@ -8,14 +16,9 @@ pub struct DayFunctions {
 
 pub fn get_day_functions(day: u8) -> DayFunctions {
     match day {
-        1 => DayFunctions {
-            part1: day_01::part1,
-            part2: day_01::part2,
-        },
-        2 => DayFunctions {
-            part1: day_02::part1,
-            part2: day_02::part2,
-        },
+        1 => day_functions!(day_01),
+        2 => day_functions!(day_02),
+        3 => day_functions!(day_03),
         _ => panic!("Code for day not found"),
     }
 }
