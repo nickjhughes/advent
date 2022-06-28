@@ -2,6 +2,14 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+pub fn part1() -> String {
+    format!("{}", total_frequency(None))
+}
+
+pub fn part2() -> String {
+    format!("{}", first_revisited_frequency(None))
+}
+
 fn get_frequency_changes() -> Vec<i64> {
     let file = File::open("inputs/input01").expect("Failed to open input file");
     let reader = BufReader::new(file);
@@ -14,7 +22,7 @@ fn get_frequency_changes() -> Vec<i64> {
     frequency_changes
 }
 
-pub fn part1(frequency_changes: Option<Vec<i64>>) -> i64 {
+fn total_frequency(frequency_changes: Option<Vec<i64>>) -> i64 {
     let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
     let mut frequency: i64 = 0;
     for frequency_change in frequency_changes {
@@ -23,7 +31,7 @@ pub fn part1(frequency_changes: Option<Vec<i64>>) -> i64 {
     frequency
 }
 
-pub fn part2(frequency_changes: Option<Vec<i64>>) -> i64 {
+fn first_revisited_frequency(frequency_changes: Option<Vec<i64>>) -> i64 {
     let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
     let mut frequency: i64 = 0;
     let mut frequencies_seen = HashSet::from([0]);
@@ -46,17 +54,17 @@ pub fn part2(frequency_changes: Option<Vec<i64>>) -> i64 {
 
 #[test]
 fn part1_tests() {
-    assert_eq!(part1(Some(vec![1, -2, 3, 1])), 3);
-    assert_eq!(part1(Some(vec![1, 1, 1])), 3);
-    assert_eq!(part1(Some(vec![1, 1, -2])), 0);
-    assert_eq!(part1(Some(vec![-1, -2, -3])), -6);
+    assert_eq!(total_frequency(Some(vec![1, -2, 3, 1])), 3);
+    assert_eq!(total_frequency(Some(vec![1, 1, 1])), 3);
+    assert_eq!(total_frequency(Some(vec![1, 1, -2])), 0);
+    assert_eq!(total_frequency(Some(vec![-1, -2, -3])), -6);
 }
 
 #[test]
 fn part2_tests() {
-    assert_eq!(part2(Some(vec![1, -2, 3, 1])), 2);
-    assert_eq!(part2(Some(vec![1, -1])), 0);
-    assert_eq!(part2(Some(vec![3, 3, 4, -2, -4])), 10);
-    assert_eq!(part2(Some(vec![-6, 3, 8, 5, -6])), 5);
-    assert_eq!(part2(Some(vec![7, 7, -2, -7, -4])), 14);
+    assert_eq!(first_revisited_frequency(Some(vec![1, -2, 3, 1])), 2);
+    assert_eq!(first_revisited_frequency(Some(vec![1, -1])), 0);
+    assert_eq!(first_revisited_frequency(Some(vec![3, 3, 4, -2, -4])), 10);
+    assert_eq!(first_revisited_frequency(Some(vec![-6, 3, 8, 5, -6])), 5);
+    assert_eq!(first_revisited_frequency(Some(vec![7, 7, -2, -7, -4])), 14);
 }
