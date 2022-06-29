@@ -1,0 +1,13 @@
+pub fn part1() -> String {
+    "".to_string()
+}
+
+pub fn part2() -> String {
+    "".to_string()
+}
+
+#[test]
+fn part1_tests() {}
+
+#[test]
+fn part2_tests() {}
