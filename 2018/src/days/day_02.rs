@@ -35,8 +35,8 @@ fn multiply_twos_and_threes(box_ids: Option<Vec<String>>) -> u64 {
     two_count * three_count
 }
 
-fn n_of_any_letter(box_id: &str, n: u64) -> bool {
-    let mut letter_counts: HashMap<char, u64> = HashMap::new();
+fn n_of_any_letter(box_id: &str, n: u8) -> bool {
+    let mut letter_counts: HashMap<char, u8> = HashMap::new();
     let chars: Vec<char> = box_id.chars().collect();
     for c in chars {
         *letter_counts.entry(c).or_insert(0) += 1;
@@ -66,8 +66,7 @@ fn closest_box_ids(box_ids: Vec<String>) -> (String, String) {
             }
         }
     }
-    //panic!("Failed to find closest box IDs");
-    ("".to_string(), "".to_string())
+    panic!("Failed to find closest box IDs");
 }
 
 fn closest_box_ids_shared_chars(box_ids: Option<Vec<String>>) -> String {

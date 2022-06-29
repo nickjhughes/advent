@@ -10,30 +10,30 @@ pub fn part2() -> String {
     format!("{}", first_revisited_frequency(None))
 }
 
-fn get_frequency_changes() -> Vec<i64> {
+fn get_frequency_changes() -> Vec<i32> {
     let file = File::open("inputs/input01").expect("Failed to open input file");
     let reader = BufReader::new(file);
     let mut frequency_changes = Vec::new();
     for line in reader.lines() {
         let line = line.expect("Failed to read line");
-        let frequency_change = line.parse::<i64>().expect("Could not parse line to i64");
+        let frequency_change = line.parse::<i32>().expect("Could not parse line to i32");
         frequency_changes.push(frequency_change);
     }
     frequency_changes
 }
 
-fn total_frequency(frequency_changes: Option<Vec<i64>>) -> i64 {
+fn total_frequency(frequency_changes: Option<Vec<i32>>) -> i32 {
     let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
-    let mut frequency: i64 = 0;
+    let mut frequency: i32 = 0;
     for frequency_change in frequency_changes {
         frequency += frequency_change;
     }
     frequency
 }
 
-fn first_revisited_frequency(frequency_changes: Option<Vec<i64>>) -> i64 {
+fn first_revisited_frequency(frequency_changes: Option<Vec<i32>>) -> i32 {
     let frequency_changes = frequency_changes.unwrap_or_else(get_frequency_changes);
-    let mut frequency: i64 = 0;
+    let mut frequency: i32 = 0;
     let mut frequencies_seen = HashSet::from([0]);
 
     let mut i = 0;

@@ -11,11 +11,11 @@ pub fn part2() -> String {
 }
 
 struct Claim {
-    id: u64,
-    left: u64,
-    top: u64,
-    width: u64,
-    height: u64,
+    id: u16,
+    left: u16,
+    top: u16,
+    width: u16,
+    height: u16,
 }
 
 fn get_claims() -> Vec<Claim> {
@@ -35,22 +35,22 @@ fn get_claims() -> Vec<Claim> {
             panic!("Could not parse claim");
         }
         claims.push(Claim {
-            id: parts[0].parse::<u64>().expect("Could not parse claim ID"),
-            left: parts[1].parse::<u64>().expect("Could not parse claim left"),
-            top: parts[2].parse::<u64>().expect("Could not parse claim top"),
+            id: parts[0].parse::<u16>().expect("Could not parse claim ID"),
+            left: parts[1].parse::<u16>().expect("Could not parse claim left"),
+            top: parts[2].parse::<u16>().expect("Could not parse claim top"),
             width: parts[3]
-                .parse::<u64>()
+                .parse::<u16>()
                 .expect("Could not parse claim width"),
             height: parts[4]
-                .parse::<u64>()
+                .parse::<u16>()
                 .expect("Could not parse claim height"),
         });
     }
     claims
 }
 
-fn squares_with_counts(claims: &Vec<Claim>) -> HashMap<(u64, u64), u64> {
-    let mut squares: HashMap<(u64, u64), u64> = HashMap::new();
+fn squares_with_counts(claims: &Vec<Claim>) -> HashMap<(u16, u16), u16> {
+    let mut squares: HashMap<(u16, u16), u16> = HashMap::new();
     for claim in claims {
         for x in claim.left..(claim.left + claim.width) {
             for y in claim.top..(claim.top + claim.height) {
@@ -61,7 +61,7 @@ fn squares_with_counts(claims: &Vec<Claim>) -> HashMap<(u64, u64), u64> {
     squares
 }
 
-fn overlapping_area(claims: Option<Vec<Claim>>) -> u64 {
+fn overlapping_area(claims: Option<Vec<Claim>>) -> u16 {
     let claims = claims.unwrap_or_else(get_claims);
     let squares = squares_with_counts(&claims);
     let mut overlapping_count = 0;
@@ -73,7 +73,7 @@ fn overlapping_area(claims: Option<Vec<Claim>>) -> u64 {
     overlapping_count
 }
 
-fn standalone_claim(claims: Option<Vec<Claim>>) -> u64 {
+fn standalone_claim(claims: Option<Vec<Claim>>) -> u16 {
     let claims = claims.unwrap_or_else(get_claims);
     let squares = squares_with_counts(&claims);
     for claim in &claims {

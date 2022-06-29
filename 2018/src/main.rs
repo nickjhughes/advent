@@ -5,7 +5,14 @@ use crate::inputs::get_day_input;
 use days::*;
 use std::env;
 
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
 fn main() {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
         eprintln!("Please specify a day");
