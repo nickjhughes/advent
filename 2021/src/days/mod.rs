@@ -16,6 +16,7 @@ pub struct DayFunctions {
 
 pub fn get_day_functions(day: u8) -> DayFunctions {
     match day {
+        22 => day_functions!(day_22),
         24 => day_functions!(day_24),
         _ => panic!("Code for day not found"),
     }

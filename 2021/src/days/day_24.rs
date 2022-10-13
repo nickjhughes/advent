@@ -24,6 +24,7 @@ pub fn part2() -> String {
     "".to_string()
 }
 
+#[allow(dead_code)]
 fn is_input_valid(inputs: Vec<i64>) -> bool {
     let instructions = Rc::new(load_instructions());
     let mut alu = Alu::new(instructions.clone());
@@ -214,6 +215,7 @@ impl Alu {
         }
     }
 
+    #[allow(dead_code)]
     fn reset(&mut self) {
         self.w = 0;
         self.x = 0;
