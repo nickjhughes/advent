@@ -12,16 +12,64 @@ use std::fs;
 use std::rc::Rc;
 
 pub fn part1() -> String {
-    let instructions = Rc::new(load_instructions());
-    let mut alu = Alu::new(instructions, vec![9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]);
-    alu.execute();
-    println!("{}", alu.z);
+    let alu_result = run_alu(vec![5, 9, 9, 9, 8, 4, 2, 6, 9, 9, 6, 8, 7, 9]);
+    let monad_result = run_monad([5, 9, 9, 9, 8, 4, 2, 6, 9, 9, 6, 8, 7, 9]);
+
+    println!("{} {}", alu_result, monad_result);
 
     "".to_string()
 }
 
 pub fn part2() -> String {
     "".to_string()
+}
+
+fn is_input_valid(inputs: Vec<i64>) -> bool {
+    let instructions = Rc::new(load_instructions());
+    let mut alu = Alu::new(instructions.clone());
+    alu.execute(inputs);
+    alu.z == 0
+}
+
+fn run_alu(inputs: Vec<i64>) -> i64 {
+    let instructions = Rc::new(load_instructions());
+    let mut alu = Alu::new(instructions.clone());
+    alu.execute(inputs);
+    alu.z
+}
+
+fn run_monad(inputs: [i64; 14]) -> i64 {
+    let mut z = 0;
+    z = monad_generic(z, inputs[0], false, 13, 8);
+    z = monad_generic(z, inputs[1], false, 12, 13);
+    z = monad_generic(z, inputs[2], false, 12, 8);
+    z = monad_generic(z, inputs[3], false, 10, 10);
+    z = monad_generic(z, inputs[4], true, -11, 12);
+    z = monad_generic(z, inputs[5], true, -13, 1);
+    z = monad_generic(z, inputs[6], false, 15, 13);
+    z = monad_generic(z, inputs[7], false, 10, 5);
+    z = monad_generic(z, inputs[8], true, -2, 10);
+    z = monad_generic(z, inputs[9], true, -6, 3);
+    z = monad_generic(z, inputs[10], false, 14, 2);
+    z = monad_generic(z, inputs[11], true, 0, 2);
+    z = monad_generic(z, inputs[12], true, -15, 12);
+    z = monad_generic(z, inputs[13], true, -4, 7);
+    z
+}
+
+fn monad_generic(z: i64, input: i64, truncate_z: bool, x_add: i64, y_add: i64) -> i64 {
+    let mut z = z;
+    if (z % 26) + x_add != input {
+        if truncate_z {
+            z = z / 26;
+        }
+        z * 26 + input + y_add
+    } else {
+        if truncate_z {
+            z = z / 26;
+        }
+        z
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,7 +134,7 @@ impl Instruction {
                 opt(tuple((
                     multispace1,
                     alt((
-                        map(Register::parse, |register| Value::Register(register)),
+                        map(Register::parse, Value::Register),
                         map(
                             tuple((opt(tag::<_, &str, _>("-")), digit1)),
                             |(neg, num)| {
@@ -131,7 +179,7 @@ fn parse_instructions(input: &str) -> IResult<&str, Vec<Instruction>> {
     many1(map(
         tuple((Instruction::parse, opt(line_ending))),
         |(instruction, _)| instruction,
-    ))(&input)
+    ))(input)
 }
 
 fn load_instructions() -> Vec<Instruction> {
@@ -153,7 +201,7 @@ impl fmt::Debug for Alu {
 }
 
 impl Alu {
-    fn new(instructions: Rc<Vec<Instruction>>, inputs: Vec<i64>) -> Self {
+    fn new(instructions: Rc<Vec<Instruction>>) -> Self {
         Self {
             w: 0,
             x: 0,
@@ -162,11 +210,21 @@ impl Alu {
             program_counter: 0,
             input_counter: 0,
             instructions,
-            inputs,
+            inputs: Vec::new(),
         }
     }
 
-    fn execute(&mut self) {
+    fn reset(&mut self) {
+        self.w = 0;
+        self.x = 0;
+        self.y = 0;
+        self.z = 0;
+        self.program_counter = 0;
+        self.input_counter = 0;
+    }
+
+    fn execute(&mut self, inputs: Vec<i64>) {
+        self.inputs = inputs;
         while self.program_counter < self.instructions.len() {
             self.execute_instruction();
             self.program_counter += 1;
@@ -269,8 +327,8 @@ fn alu_test1() {
             operation: Operation::Multiply(Value::Number(-1)),
         },
     ]);
-    let mut alu = Alu::new(instructions.clone(), vec![5]);
-    alu.execute();
+    let mut alu = Alu::new(instructions.clone());
+    alu.execute(vec![5]);
     assert_eq!(alu.x, -5);
 }
 
@@ -295,12 +353,12 @@ fn alu_test2() {
         },
     ]);
 
-    let mut alu = Alu::new(instructions.clone(), vec![5, 15]);
-    alu.execute();
+    let mut alu = Alu::new(instructions.clone());
+    alu.execute(vec![5, 15]);
     assert_eq!(alu.z, 1);
 
-    let mut alu = Alu::new(instructions.clone(), vec![4, 15]);
-    alu.execute();
+    alu.reset();
+    alu.execute(vec![4, 15]);
     assert_eq!(alu.z, 0);
 }
 
@@ -353,8 +411,8 @@ fn alu_test3() {
         },
     ]);
 
-    let mut alu = Alu::new(instructions.clone(), vec![10]);
-    alu.execute();
+    let mut alu = Alu::new(instructions.clone());
+    alu.execute(vec![10]);
     assert_eq!(alu.z, 0);
     assert_eq!(alu.y, 1);
     assert_eq!(alu.x, 0);
