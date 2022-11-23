@@ -1,5 +1,5 @@
 venv/
-input*
+inputs/
 sample*
 .ipynb_checkpoints/
 *.exe
