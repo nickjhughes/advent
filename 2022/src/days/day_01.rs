@@ -4,14 +4,14 @@ pub fn part1() -> String {
     let contents = get_input_file_contents();
     let elf_food = parse_elf_food(&contents);
     let most_food = get_most_food(&elf_food);
-    format!("{}", most_food).to_string()
+    format!("{}", most_food)
 }
 
 pub fn part2() -> String {
     let contents = get_input_file_contents();
     let mut elf_food = parse_elf_food(&contents);
     let top_three_food = get_total_top_three_food(&mut elf_food);
-    format!("{}", top_three_food).to_string()
+    format!("{}", top_three_food)
 }
 
 fn get_input_file_contents() -> String {
@@ -21,7 +21,7 @@ fn get_input_file_contents() -> String {
 fn parse_elf_food(contents: &str) -> Vec<u32> {
     let mut elf_food = Vec::new();
     let mut current_elf_food = 0;
-    for line in contents.split("\n") {
+    for line in contents.split('\n') {
         if line.is_empty() {
             if current_elf_food > 0 {
                 elf_food.push(current_elf_food);

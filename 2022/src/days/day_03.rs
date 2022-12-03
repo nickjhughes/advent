@@ -52,14 +52,14 @@ pub fn part1() -> String {
     let contents = get_input_file_contents();
     let rucksacks = parse_rucksacks(&contents);
     let shared_priorities_sum = shared_comparment_item_priorities_sum(rucksacks);
-    format!("{}", shared_priorities_sum).to_string()
+    format!("{}", shared_priorities_sum)
 }
 
 pub fn part2() -> String {
     let contents = get_input_file_contents();
     let rucksacks = parse_rucksacks(&contents);
     let group_priorities_sum = shared_group_item_priorities_sum(rucksacks);
-    format!("{}", group_priorities_sum).to_string()
+    format!("{}", group_priorities_sum)
 }
 
 fn get_input_file_contents() -> String {
@@ -68,11 +68,11 @@ fn get_input_file_contents() -> String {
 
 fn parse_rucksacks(contents: &str) -> Vec<Rucksack> {
     let mut rucksacks = Vec::new();
-    for line in contents.split("\n") {
+    for line in contents.split('\n') {
         if line.is_empty() {
             continue;
         }
-        let items = line.chars().map(|c| Item(c)).collect::<Vec<Item>>();
+        let items = line.chars().map(Item).collect::<Vec<Item>>();
         rucksacks.push(Rucksack { items });
     }
     rucksacks

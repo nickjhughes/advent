@@ -97,14 +97,14 @@ pub fn part1() -> String {
     let contents = get_input_file_contents();
     let strategy = parse_strategy_choice(&contents);
     let score = strategy_score(&strategy);
-    format!("{}", score).to_string()
+    format!("{}", score)
 }
 
 pub fn part2() -> String {
     let contents = get_input_file_contents();
     let strategy = parse_strategy_outcome(&contents);
     let score = strategy_score(&strategy);
-    format!("{}", score).to_string()
+    format!("{}", score)
 }
 
 fn get_input_file_contents() -> String {
@@ -113,11 +113,11 @@ fn get_input_file_contents() -> String {
 
 fn parse_strategy_choice(contents: &str) -> Vec<Round> {
     let mut strategy = Vec::new();
-    for line in contents.split("\n") {
+    for line in contents.split('\n') {
         if line.is_empty() {
             continue;
         }
-        let choices = line.split(" ").collect::<Vec<&str>>();
+        let choices = line.split(' ').collect::<Vec<&str>>();
         assert_eq!(choices.len(), 2);
         let opponent_choice = match choices[0] {
             "A" => Choice::Rock,
@@ -138,11 +138,11 @@ fn parse_strategy_choice(contents: &str) -> Vec<Round> {
 
 fn parse_strategy_outcome(contents: &str) -> Vec<Round> {
     let mut strategy = Vec::new();
-    for line in contents.split("\n") {
+    for line in contents.split('\n') {
         if line.is_empty() {
             continue;
         }
-        let choices = line.split(" ").collect::<Vec<&str>>();
+        let choices = line.split(' ').collect::<Vec<&str>>();
         assert_eq!(choices.len(), 2);
         let opponent_choice = match choices[0] {
             "A" => Choice::Rock,
