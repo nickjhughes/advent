@@ -20,6 +20,7 @@ pub fn get_day_functions(day: u8) -> DayFunctions {
         2 => day_functions!(day_02),
         3 => day_functions!(day_03),
         4 => day_functions!(day_04),
+        5 => day_functions!(day_05),
         _ => panic!("Code for day not found"),
     }
 }
