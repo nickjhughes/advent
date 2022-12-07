@@ -14,7 +14,7 @@ fn main() {
     let day = args[1].parse::<u8>().expect("Failed to parse input day");
 
     get_day_input(day);
-    let fns = get_day_functions(day);
+    let fns = get_day_functions(day).expect("Code for day not found");
 
     println!("Day {}", day);
     let result1 = (fns.part1)();
