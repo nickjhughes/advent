@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 automod = "1.0"
+ndarray = "0.15"
 nom = "7.1"
 reqwest = { version = "0.11", features = ["blocking"] }
 serde_json = "1.0"
