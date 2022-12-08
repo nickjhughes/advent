@@ -37,10 +37,12 @@ pub fn get_day_input(day: u8) {
     let url = format!("https://adventofcode.com/2022/day/{}/input", day);
     let resp = client.get(url).send().expect("Failed to load input URL");
     if resp.status() == 400 {
-        eprintln!("Not logged into Advent of Code - try updating your session cookie");
-        panic!();
+        panic!("Not logged into Advent of Code - try updating your session cookie");
     }
     let body = resp.text().expect("Failed to get input response body");
+    if body.starts_with("Please don't") {
+        panic!("Input for day {} is not available yet", day);
+    }
 
     std::fs::write(&path, body).expect("Failed to write input file");
 }
