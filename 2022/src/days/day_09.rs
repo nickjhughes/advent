@@ -1,11 +1,26 @@
 use std::{collections::HashSet, fs};
 
 #[derive(Debug, PartialEq, Eq)]
-enum Motion {
-    Up(u8),
-    Down(u8),
-    Left(u8),
-    Right(u8),
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Motion {
+    direction: Direction,
+    num_steps: u8,
+}
+
+impl Motion {
+    fn new(direction: Direction, num_steps: u8) -> Self {
+        Self {
+            direction,
+            num_steps,
+        }
+    }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -22,90 +37,86 @@ impl Point2 {
 
 #[derive(Debug)]
 struct Rope {
-    head: Point2,
-    tail: Point2,
+    knots: Vec<Point2>,
     tail_positions: HashSet<Point2>,
 }
 
 impl Rope {
-    fn new() -> Self {
-        let tail = Point2::new(0, 0);
+    fn new(length: usize) -> Self {
+        let knots = vec![Point2::new(0, 0); length];
         let mut tail_positions = HashSet::new();
-        tail_positions.insert(tail);
+        tail_positions.insert(*knots.last().unwrap());
         Self {
-            head: Point2::new(0, 0),
-            tail,
+            knots,
             tail_positions,
         }
     }
 
-    fn move_tail(&mut self) {
-        if !self.ends_are_adjacent() {
-            let dx = self.head.x - self.tail.x;
-            let dy = self.head.y - self.tail.y;
+    fn move_head_one_step(&mut self, direction: &Direction) {
+        match direction {
+            Direction::Up => {
+                self.knots[0].y += 1;
+            }
+            Direction::Down => {
+                self.knots[0].y -= 1;
+            }
+            Direction::Left => {
+                self.knots[0].x -= 1;
+            }
+            Direction::Right => {
+                self.knots[0].x += 1;
+            }
+        }
+    }
+
+    fn move_knot(&mut self, i: usize) {
+        assert!(i > 0);
+        if !self.knots_are_adjacent(i, i - 1) {
+            let dx = self.knots[i - 1].x - self.knots[i].x;
+            let dy = self.knots[i - 1].y - self.knots[i].y;
             if dx == 0 {
                 // Same column, move tail vertically one step closer to the head
                 if dy == -2 {
-                    self.tail.y -= 1;
+                    self.knots[i].y -= 1;
                 } else if dy == 2 {
-                    self.tail.y += 1;
+                    self.knots[i].y += 1;
                 }
             } else if dy == 0 {
                 // Same row, move tail horizontally one step closer to the head
                 if dx == -2 {
-                    self.tail.x -= 1;
+                    self.knots[i].x -= 1;
                 } else if dx == 2 {
-                    self.tail.x += 1;
+                    self.knots[i].x += 1;
                 }
             } else {
                 // Move tail diagonally one step closer to the head
                 if dx > 0 {
-                    self.tail.x += 1;
+                    self.knots[i].x += 1;
                 } else {
-                    self.tail.x -= 1;
+                    self.knots[i].x -= 1;
                 }
                 if dy > 0 {
-                    self.tail.y += 1;
+                    self.knots[i].y += 1;
                 } else {
-                    self.tail.y -= 1;
+                    self.knots[i].y -= 1;
                 }
             }
-            self.tail_positions.insert(self.tail);
+            self.tail_positions.insert(*self.knots.last().unwrap());
         }
     }
 
     fn apply_motion(&mut self, motion: &Motion) {
-        match motion {
-            Motion::Up(num_steps) => {
-                for _ in 0..*num_steps {
-                    self.head.y += 1;
-                    self.move_tail();
-                }
-            }
-            Motion::Down(num_steps) => {
-                for _ in 0..*num_steps {
-                    self.head.y -= 1;
-                    self.move_tail();
-                }
-            }
-            Motion::Left(num_steps) => {
-                for _ in 0..*num_steps {
-                    self.head.x -= 1;
-                    self.move_tail();
-                }
-            }
-            Motion::Right(num_steps) => {
-                for _ in 0..*num_steps {
-                    self.head.x += 1;
-                    self.move_tail();
-                }
+        for _ in 0..motion.num_steps {
+            self.move_head_one_step(&motion.direction);
+            for i in 1..self.knots.len() {
+                self.move_knot(i);
             }
         }
     }
 
-    fn ends_are_adjacent(&self) -> bool {
-        let dx = (self.head.x - self.tail.x).abs();
-        let dy = (self.head.y - self.tail.y).abs();
+    fn knots_are_adjacent(&self, i: usize, j: usize) -> bool {
+        let dx = (self.knots[i].x - self.knots[j].x).abs();
+        let dy = (self.knots[i].y - self.knots[j].y).abs();
         if dx == 0 && dy == 0 {
             // Overlapping
             true
@@ -133,10 +144,10 @@ impl Motion {
             .parse::<u8>()
             .expect("Failed to parse number of steps");
         match parts[0] {
-            "U" => Motion::Up(num_steps),
-            "D" => Motion::Down(num_steps),
-            "L" => Motion::Left(num_steps),
-            "R" => Motion::Right(num_steps),
+            "U" => Motion::new(Direction::Up, num_steps),
+            "D" => Motion::new(Direction::Down, num_steps),
+            "L" => Motion::new(Direction::Left, num_steps),
+            "R" => Motion::new(Direction::Right, num_steps),
             _ => panic!("Invalid direction"),
         }
     }
@@ -145,7 +156,7 @@ impl Motion {
 pub fn part1() -> String {
     let contents = get_input_file_contents();
     let motions = parse_motions(&contents);
-    let mut rope = Rope::new();
+    let mut rope = Rope::new(2);
     for motion in &motions {
         rope.apply_motion(motion);
     }
@@ -154,8 +165,14 @@ pub fn part1() -> String {
 }
 
 pub fn part2() -> String {
-    let _contents = get_input_file_contents();
-    format!("")
+    let contents = get_input_file_contents();
+    let motions = parse_motions(&contents);
+    let mut rope = Rope::new(10);
+    for motion in &motions {
+        rope.apply_motion(motion);
+    }
+    let tail_positions_count = rope.tail_positions_count();
+    format!("{}", tail_positions_count)
 }
 
 fn get_input_file_contents() -> String {
@@ -179,86 +196,98 @@ fn test_parse_motions() {
     let motions = parse_motions(&contents);
     assert_eq!(motions.len(), 8);
 
-    assert_eq!(motions[0], Motion::Right(4));
-    assert_eq!(motions[1], Motion::Up(4));
-    assert_eq!(motions[2], Motion::Left(3));
-    assert_eq!(motions[3], Motion::Down(1));
-    assert_eq!(motions[4], Motion::Right(4));
-    assert_eq!(motions[5], Motion::Down(1));
-    assert_eq!(motions[6], Motion::Left(5));
-    assert_eq!(motions[7], Motion::Right(2));
+    assert_eq!(motions[0], Motion::new(Direction::Right, 4));
+    assert_eq!(motions[1], Motion::new(Direction::Up, 4));
+    assert_eq!(motions[2], Motion::new(Direction::Left, 3));
+    assert_eq!(motions[3], Motion::new(Direction::Down, 1));
+    assert_eq!(motions[4], Motion::new(Direction::Right, 4));
+    assert_eq!(motions[5], Motion::new(Direction::Down, 1));
+    assert_eq!(motions[6], Motion::new(Direction::Left, 5));
+    assert_eq!(motions[7], Motion::new(Direction::Right, 2));
 }
 
 #[test]
-fn test_ends_are_adjacent() {
-    let mut rope = Rope::new();
-    rope.head = Point2::new(0, 0);
-    rope.tail = Point2::new(0, 0);
-    assert!(rope.ends_are_adjacent());
+fn test_knots_are_adjacent() {
+    let mut rope = Rope::new(2);
+    rope.knots[0] = Point2::new(0, 0);
+    rope.knots[1] = Point2::new(0, 0);
+    assert!(rope.knots_are_adjacent(0, 1));
 
-    rope.head = Point2::new(1, 0);
-    assert!(rope.ends_are_adjacent());
+    rope.knots[0] = Point2::new(1, 0);
+    assert!(rope.knots_are_adjacent(0, 1));
 
-    rope.head = Point2::new(-1, 1);
-    assert!(rope.ends_are_adjacent());
+    rope.knots[0] = Point2::new(-1, 1);
+    assert!(rope.knots_are_adjacent(0, 1));
 
-    rope.head = Point2::new(2, 0);
-    assert!(!rope.ends_are_adjacent());
+    rope.knots[0] = Point2::new(2, 0);
+    assert!(!rope.knots_are_adjacent(0, 1));
 
-    rope.head = Point2::new(0, -2);
-    assert!(!rope.ends_are_adjacent());
+    rope.knots[0] = Point2::new(0, -2);
+    assert!(!rope.knots_are_adjacent(0, 1));
 
-    rope.head = Point2::new(1, 2);
-    assert!(!rope.ends_are_adjacent());
+    rope.knots[0] = Point2::new(1, 2);
+    assert!(!rope.knots_are_adjacent(0, 1));
 }
 
 #[test]
-fn test_apply_motion() {
+fn test_apply_motion_two_knots() {
     let contents = "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2\n";
     let motions = parse_motions(&contents);
-    let mut rope = Rope::new();
+    let mut rope = Rope::new(2);
 
     rope.apply_motion(&motions[0]);
-    assert_eq!(rope.head, Point2::new(4, 0));
-    assert_eq!(rope.tail, Point2::new(3, 0));
+    assert_eq!(rope.knots[0], Point2::new(4, 0));
+    assert_eq!(rope.knots[1], Point2::new(3, 0));
 
     rope.apply_motion(&motions[1]);
-    assert_eq!(rope.head, Point2::new(4, 4));
-    assert_eq!(rope.tail, Point2::new(4, 3));
+    assert_eq!(rope.knots[0], Point2::new(4, 4));
+    assert_eq!(rope.knots[1], Point2::new(4, 3));
 
     rope.apply_motion(&motions[2]);
-    assert_eq!(rope.head, Point2::new(1, 4));
-    assert_eq!(rope.tail, Point2::new(2, 4));
+    assert_eq!(rope.knots[0], Point2::new(1, 4));
+    assert_eq!(rope.knots[1], Point2::new(2, 4));
 
     rope.apply_motion(&motions[3]);
-    assert_eq!(rope.head, Point2::new(1, 3));
-    assert_eq!(rope.tail, Point2::new(2, 4));
+    assert_eq!(rope.knots[0], Point2::new(1, 3));
+    assert_eq!(rope.knots[1], Point2::new(2, 4));
 
     rope.apply_motion(&motions[4]);
-    assert_eq!(rope.head, Point2::new(5, 3));
-    assert_eq!(rope.tail, Point2::new(4, 3));
+    assert_eq!(rope.knots[0], Point2::new(5, 3));
+    assert_eq!(rope.knots[1], Point2::new(4, 3));
 
     rope.apply_motion(&motions[5]);
-    assert_eq!(rope.head, Point2::new(5, 2));
-    assert_eq!(rope.tail, Point2::new(4, 3));
+    assert_eq!(rope.knots[0], Point2::new(5, 2));
+    assert_eq!(rope.knots[1], Point2::new(4, 3));
 
     rope.apply_motion(&motions[6]);
-    assert_eq!(rope.head, Point2::new(0, 2));
-    assert_eq!(rope.tail, Point2::new(1, 2));
+    assert_eq!(rope.knots[0], Point2::new(0, 2));
+    assert_eq!(rope.knots[1], Point2::new(1, 2));
 
     rope.apply_motion(&motions[7]);
-    assert_eq!(rope.head, Point2::new(2, 2));
-    assert_eq!(rope.tail, Point2::new(1, 2));
+    assert_eq!(rope.knots[0], Point2::new(2, 2));
+    assert_eq!(rope.knots[1], Point2::new(1, 2));
 }
 
 #[test]
-fn test_tail_positions_count() {
+fn test_tail_positions_count_two_knots() {
     let contents = "R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2\n";
     let motions = parse_motions(&contents);
-    let mut rope = Rope::new();
+    let mut rope = Rope::new(2);
     for motion in &motions {
         rope.apply_motion(motion);
     }
     let tail_positions_count = rope.tail_positions_count();
     assert_eq!(tail_positions_count, 13);
+}
+
+#[test]
+fn test_tail_positions_count_ten_knots() {
+    let contents = "R 5\nU 8\nL 8\nD 3\nR 17\nD 10\nL 25\nU 20\n";
+    let motions = parse_motions(&contents);
+    let mut rope = Rope::new(10);
+    for motion in &motions {
+        rope.apply_motion(motion);
+    }
+    let tail_positions_count = rope.tail_positions_count();
+    assert_eq!(tail_positions_count, 36);
 }
