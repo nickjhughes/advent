@@ -31,7 +31,7 @@ fn get_input_file_contents() -> String {
 fn parse_tree_grid(contents: &str) -> Array<u8, Ix2> {
     let lines = contents.split('\n').collect::<Vec<&str>>();
     assert!(!lines.is_empty());
-    assert!(lines[0].len() > 0);
+    assert!(!lines[0].is_empty());
     let rows = lines[0].len();
     let cols = lines.iter().filter(|l| !l.is_empty()).count();
     let mut tree_grid = Array::<u8, Ix2>::zeros((rows, cols).f());
@@ -148,7 +148,7 @@ fn is_tree_visible(tree_grid: &Array<u8, Ix2>, row: usize, col: usize) -> bool {
     if is_tree_visible_from_direction(tree_grid, row, col, Direction::Down) {
         return true;
     }
-    return false;
+    false
 }
 
 fn count_visible_trees(tree_grid: &Array<u8, Ix2>) -> usize {
@@ -253,7 +253,7 @@ fn tree_scenic_score(tree_grid: &Array<u8, Ix2>, row: usize, col: usize) -> usiz
     let distance_right = tree_viewing_distance(tree_grid, row, col, Direction::Right);
     let distance_up = tree_viewing_distance(tree_grid, row, col, Direction::Up);
     let distance_down = tree_viewing_distance(tree_grid, row, col, Direction::Down);
-    return distance_left * distance_right * distance_up * distance_down;
+    distance_left * distance_right * distance_up * distance_down
 }
 
 fn tree_scenic_scores(tree_grid: &Array<u8, Ix2>) -> Vec<usize> {
