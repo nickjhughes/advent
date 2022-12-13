@@ -28,6 +28,7 @@ pub fn get_day_functions(day: u8) -> Option<DayFunctions> {
         10 => Some(day_functions!(day_10)),
         11 => Some(day_functions!(day_11)),
         12 => Some(day_functions!(day_12)),
+        13 => Some(day_functions!(day_13)),
         _ => None,
     }
 }
