@@ -11,8 +11,11 @@ pub fn part1() -> String {
 }
 
 pub fn part2() -> String {
-    let _contents = get_input_file_contents();
-    format!("")
+    let contents = get_input_file_contents();
+    let volcano = Volcano::parse(&contents);
+    let most_pressure_released =
+        find_most_pressure_released_with_elephant(StateWithElephant::new(&volcano), &volcano);
+    format!("{}", most_pressure_released)
 }
 
 fn get_input_file_contents() -> String {
@@ -24,7 +27,7 @@ struct Volcano {
     initial_valve: usize,
     flow_rates: Vec<u32>,
     connections: Vec<(usize, usize)>,
-    shortest_paths: HashMap<(usize, usize), u32>,
+    shortest_paths: HashMap<(usize, usize), Vec<usize>>,
 }
 
 impl Volcano {
@@ -101,15 +104,13 @@ impl Volcano {
             .collect::<Vec<usize>>()
     }
 
-    fn shortest_path(&self, start: usize, end: usize) -> u32 {
-        self.shortest_paths[&(start, end)]
-    }
-
-    fn calc_shortest_path(&self, start: usize, end: usize) -> u32 {
+    fn calc_shortest_path(&self, start: usize, end: usize) -> Vec<usize> {
         let mut queue = Vec::new();
         let mut distance = Vec::new();
+        let mut previous = Vec::new();
         for valve in 0..self.flow_rates.len() {
             distance.push(std::u32::MAX);
+            previous.push(None);
             queue.push(valve);
         }
         distance[start] = 0;
@@ -128,18 +129,63 @@ impl Volcano {
                 break;
             }
             let valve = queue.remove(min_dist_index);
+            if valve == end {
+                break;
+            }
 
             let neighbors = self.neighbors(valve);
             for neighbor in neighbors {
                 let new_distance = distance[valve] + 1;
                 if new_distance < distance[neighbor] {
                     distance[neighbor] = new_distance;
+                    previous[neighbor] = Some(valve);
                 }
             }
         }
 
-        distance[end]
+        let mut path = vec![end];
+        let mut current_valve = end;
+        while let Some(previous_valve) = previous[current_valve] {
+            path.insert(0, previous_valve);
+            current_valve = previous_valve;
+        }
+        path
     }
+
+    fn shortest_path(&self, start: usize, end: usize) -> Vec<usize> {
+        self.shortest_paths[&(start, end)].clone()
+    }
+
+    fn shortest_path_length(&self, start: usize, end: usize) -> u32 {
+        self.shortest_paths[&(start, end)].len() as u32 - 1
+    }
+}
+
+fn calc_possible_pressure_releases(
+    current_valve: usize,
+    open_valves: &HashSet<usize>,
+    time_remaining: u32,
+    volcano: &Volcano,
+) -> Vec<u32> {
+    let mut possible_pressure_releases = Vec::with_capacity(volcano.flow_rates.len());
+    for (valve, flow_rate) in volcano.flow_rates.iter().enumerate() {
+        if *flow_rate == 0 {
+            possible_pressure_releases.push(0);
+            continue;
+        }
+        if open_valves.contains(&valve) {
+            possible_pressure_releases.push(0);
+            continue;
+        }
+        let shortest_path = volcano.shortest_path_length(current_valve, valve);
+        if shortest_path >= time_remaining {
+            possible_pressure_releases.push(0);
+            continue;
+        }
+        let possible_pressure_release = (time_remaining - shortest_path - 1) * flow_rate;
+        possible_pressure_releases.push(possible_pressure_release);
+    }
+    possible_pressure_releases
 }
 
 #[derive(Debug, Clone)]
@@ -162,24 +208,12 @@ impl State {
 }
 
 fn find_most_pressure_released(state: State, volcano: &Volcano) -> u32 {
-    let mut possible_pressure_releases = Vec::new();
-    for (valve, flow_rate) in volcano.flow_rates.iter().enumerate() {
-        if *flow_rate == 0 {
-            possible_pressure_releases.push(0);
-            continue;
-        }
-        if state.open_valves.contains(&valve) {
-            possible_pressure_releases.push(0);
-            continue;
-        }
-        let shortest_path = volcano.shortest_path(state.current_valve, valve);
-        if shortest_path >= state.time_remaining {
-            possible_pressure_releases.push(0);
-            continue;
-        }
-        let possible_pressure_release = (state.time_remaining - shortest_path - 1) * flow_rate;
-        possible_pressure_releases.push(possible_pressure_release);
-    }
+    let possible_pressure_releases = calc_possible_pressure_releases(
+        state.current_valve,
+        &state.open_valves,
+        state.time_remaining,
+        volcano,
+    );
 
     let mut best_result = None;
     for (possible_valve, pressure_release) in possible_pressure_releases.iter().enumerate() {
@@ -189,7 +223,7 @@ fn find_most_pressure_released(state: State, volcano: &Volcano) -> u32 {
 
         let mut new_state = state.clone();
         new_state.time_remaining -=
-            volcano.shortest_path(new_state.current_valve, possible_valve) + 1;
+            volcano.shortest_path_length(new_state.current_valve, possible_valve) + 1;
         new_state.current_valve = possible_valve;
         new_state.pressure_released += pressure_release;
         new_state.open_valves.insert(possible_valve);
@@ -200,6 +234,215 @@ fn find_most_pressure_released(state: State, volcano: &Volcano) -> u32 {
         }
     }
     best_result.unwrap_or(state.pressure_released)
+}
+
+#[derive(Debug, Clone)]
+struct StateWithElephant {
+    time_remaining: u32,
+    current_valve: usize,
+    current_path: Vec<usize>,
+    current_valve_to_open: Option<usize>,
+    elephant_valve: usize,
+    elephant_path: Vec<usize>,
+    elephant_valve_to_open: Option<usize>,
+    open_valves: HashSet<usize>,
+    pressure_released: u32,
+}
+
+impl StateWithElephant {
+    fn new(volcano: &Volcano) -> Self {
+        Self {
+            time_remaining: 26,
+            current_valve: volcano.initial_valve,
+            current_path: Vec::new(),
+            current_valve_to_open: None,
+            elephant_valve: volcano.initial_valve,
+            elephant_path: Vec::new(),
+            elephant_valve_to_open: None,
+            open_valves: HashSet::new(),
+            pressure_released: 0,
+        }
+    }
+}
+
+fn find_most_pressure_released_with_elephant(state: StateWithElephant, volcano: &Volcano) -> u32 {
+    if (state.current_path.is_empty() && state.current_valve_to_open.is_none())
+        || (state.elephant_path.is_empty() && state.elephant_valve_to_open.is_none())
+    {
+        // Either us or the elephant have nothing to do, so we need to explore choices
+        let our_choices = if state.current_path.is_empty() && state.current_valve_to_open.is_none()
+        {
+            calc_possible_pressure_releases(
+                state.current_valve,
+                &state.open_valves,
+                state.time_remaining,
+                volcano,
+            )
+        } else {
+            Vec::new()
+        };
+        let elephant_choices =
+            if state.elephant_path.is_empty() && state.elephant_valve_to_open.is_none() {
+                calc_possible_pressure_releases(
+                    state.elephant_valve,
+                    &state.open_valves,
+                    state.time_remaining,
+                    volcano,
+                )
+            } else {
+                Vec::new()
+            };
+
+        // Remove choices that won't release any pressure
+        let our_choices = our_choices
+            .iter()
+            .enumerate()
+            .filter(|(_, pressure_release)| **pressure_release > 0)
+            .map(|(valve, pressure_release)| (valve, *pressure_release))
+            .collect::<Vec<(usize, u32)>>();
+        let elephant_choices = elephant_choices
+            .iter()
+            .enumerate()
+            .filter(|(_, pressure_release)| **pressure_release > 0)
+            .map(|(valve, pressure_release)| (valve, *pressure_release))
+            .collect::<Vec<(usize, u32)>>();
+
+        if our_choices.is_empty() && elephant_choices.is_empty() {
+            // We're done
+            state.pressure_released
+        } else if our_choices.is_empty() {
+            // Elephant choices only
+            let mut best_result = None;
+            for (possible_valve, pressure_release) in elephant_choices.iter() {
+                if *pressure_release == 0 {
+                    continue;
+                }
+
+                let mut new_state = state.clone();
+                new_state.time_remaining -= 1;
+
+                // Move elephant one step along the path to the chosen valve
+                let mut path = volcano.shortest_path(state.elephant_valve, *possible_valve);
+                path.remove(0);
+                new_state.elephant_valve = path.remove(0);
+                new_state.pressure_released += pressure_release;
+                new_state.open_valves.insert(*possible_valve);
+                new_state.elephant_valve_to_open = Some(*possible_valve);
+                new_state.elephant_path = path;
+
+                if !state.current_path.is_empty() {
+                    new_state.current_valve = new_state.current_path.remove(0);
+                } else if let Some(current_valve_to_open) = state.current_valve_to_open {
+                    assert_eq!(state.current_valve, current_valve_to_open);
+                    new_state.current_valve_to_open = None;
+                }
+
+                let result = find_most_pressure_released_with_elephant(new_state, volcano);
+                if best_result.is_none() || result > best_result.unwrap() {
+                    best_result = Some(result);
+                }
+            }
+            best_result.unwrap_or(state.pressure_released)
+        } else if elephant_choices.is_empty() {
+            // Our choices only
+            let mut best_result = None;
+            for (possible_valve, pressure_release) in our_choices.iter() {
+                if *pressure_release == 0 {
+                    continue;
+                }
+
+                let mut new_state = state.clone();
+                new_state.time_remaining -= 1;
+
+                // Move us one step along the path to the chosen valve
+                let mut path = volcano.shortest_path(state.current_valve, *possible_valve);
+                path.remove(0);
+                new_state.current_valve = path.remove(0);
+                new_state.pressure_released += pressure_release;
+                new_state.open_valves.insert(*possible_valve);
+                new_state.current_valve_to_open = Some(*possible_valve);
+                new_state.current_path = path;
+
+                if !state.elephant_path.is_empty() {
+                    new_state.elephant_valve = new_state.elephant_path.remove(0);
+                } else if let Some(elephant_valve_to_open) = state.elephant_valve_to_open {
+                    assert_eq!(state.elephant_valve, elephant_valve_to_open);
+                    new_state.elephant_valve_to_open = None;
+                }
+
+                let result = find_most_pressure_released_with_elephant(new_state, volcano);
+                if best_result.is_none() || result > best_result.unwrap() {
+                    best_result = Some(result);
+                }
+            }
+            best_result.unwrap_or(state.pressure_released)
+        } else {
+            // Both have choices, need to combine them to get all combinations of choices
+            let mut choices = Vec::new();
+            for (our_possible_valve, our_pressure_release) in our_choices.iter() {
+                for (elephant_possible_valve, elephant_pressure_release) in our_choices.iter() {
+                    if *our_possible_valve == *elephant_possible_valve {
+                        // Can't both turn on the same valve
+                        continue;
+                    }
+                    choices.push((
+                        (*our_possible_valve, *our_pressure_release),
+                        (*elephant_possible_valve, *elephant_pressure_release),
+                    ));
+                }
+            }
+
+            let mut best_result = None;
+            for (our_choice, elephant_choice) in choices.iter() {
+                let mut new_state = state.clone();
+                new_state.time_remaining -= 1;
+
+                // Move us one step along the path to the chosen valve
+                let mut path = volcano.shortest_path(state.current_valve, our_choice.0);
+                path.remove(0);
+                new_state.current_valve = path.remove(0);
+                new_state.pressure_released += our_choice.1;
+                new_state.open_valves.insert(our_choice.0);
+                new_state.current_valve_to_open = Some(our_choice.0);
+                new_state.current_path = path;
+
+                // Move elephant one step along the path to the chosen valve
+                let mut path = volcano.shortest_path(state.elephant_valve, elephant_choice.0);
+                path.remove(0);
+                new_state.elephant_valve = path.remove(0);
+                new_state.pressure_released += elephant_choice.1;
+                new_state.open_valves.insert(elephant_choice.0);
+                new_state.elephant_valve_to_open = Some(elephant_choice.0);
+                new_state.elephant_path = path;
+
+                let result = find_most_pressure_released_with_elephant(new_state, volcano);
+                if best_result.is_none() || result > best_result.unwrap() {
+                    best_result = Some(result);
+                }
+            }
+            best_result.unwrap_or(state.pressure_released)
+        }
+    } else {
+        // Both us and the elephant are doing something, so just continue on
+        let mut new_state = state.clone();
+        new_state.time_remaining -= 1;
+
+        if !state.current_path.is_empty() {
+            new_state.current_valve = new_state.current_path.remove(0);
+        } else if let Some(current_valve_to_open) = state.current_valve_to_open {
+            assert_eq!(state.current_valve, current_valve_to_open);
+            new_state.current_valve_to_open = None;
+        }
+
+        if !state.elephant_path.is_empty() {
+            new_state.elephant_valve = new_state.elephant_path.remove(0);
+        } else if let Some(elephant_valve_to_open) = state.elephant_valve_to_open {
+            assert_eq!(state.elephant_valve, elephant_valve_to_open);
+            new_state.elephant_valve_to_open = None;
+        }
+
+        find_most_pressure_released_with_elephant(new_state, volcano)
+    }
 }
 
 #[test]
@@ -246,13 +489,15 @@ fn test_calc_shortest_path() {
     let volcano = Volcano::parse(contents);
 
     {
-        let path_length = volcano.calc_shortest_path(0, 1);
-        assert_eq!(path_length, 1);
+        let path = volcano.calc_shortest_path(0, 1);
+        assert_eq!(path.len(), 2);
+        assert_eq!(path, vec![0, 1]);
     }
 
     {
-        let path_length = volcano.calc_shortest_path(0, 7);
-        assert_eq!(path_length, 5);
+        let path = volcano.calc_shortest_path(0, 7);
+        assert_eq!(path.len(), 6);
+        assert_eq!(path, vec![0, 3, 4, 5, 6, 7]);
     }
 }
 
@@ -262,4 +507,13 @@ fn test_find_most_pressure_released() {
     let volcano = Volcano::parse(contents);
     let most_pressure_released = find_most_pressure_released(State::new(&volcano), &volcano);
     assert_eq!(most_pressure_released, 1651);
+}
+
+#[test]
+fn test_find_most_pressure_released_with_elephant() {
+    let contents = "Valve AA has flow rate=0; tunnels lead to valves DD, II, BB\nValve BB has flow rate=13; tunnels lead to valves CC, AA\nValve CC has flow rate=2; tunnels lead to valves DD, BB\nValve DD has flow rate=20; tunnels lead to valves CC, AA, EE\nValve EE has flow rate=3; tunnels lead to valves FF, DD\nValve FF has flow rate=0; tunnels lead to valves EE, GG\nValve GG has flow rate=0; tunnels lead to valves FF, HH\nValve HH has flow rate=22; tunnel leads to valve GG\nValve II has flow rate=0; tunnels lead to valves AA, JJ\nValve JJ has flow rate=21; tunnel leads to valve II\n";
+    let volcano = Volcano::parse(contents);
+    let most_pressure_released =
+        find_most_pressure_released_with_elephant(StateWithElephant::new(&volcano), &volcano);
+    assert_eq!(most_pressure_released, 1707);
 }
