@@ -1,4 +1,4 @@
-use ndarray::{prelude::*, Array, Ix2};
+use ndarray::{prelude::*, s, Array, Ix2};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -18,15 +18,18 @@ pub fn part1() -> String {
 }
 
 pub fn part2() -> String {
-    let _contents = get_input_file_contents();
-    format!("")
+    let contents = get_input_file_contents();
+    let mut cube = parse_cube(&contents);
+    cube.follow_instructions();
+    let points = cube.points();
+    format!("{}", points)
 }
 
 fn get_input_file_contents() -> String {
     fs::read_to_string("inputs/input22").expect("Failed to open input file")
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Direction {
     Up,
     Down,
@@ -211,6 +214,449 @@ impl fmt::Display for Board {
     }
 }
 
+#[derive(Debug)]
+struct Cube {
+    sides: [Array<Tile, Ix2>; 6],
+    instructions: Vec<Instruction>,
+    current_position: (usize, usize, usize),
+    current_direction: Direction,
+}
+
+impl Cube {
+    fn new(sides: [Array<Tile, Ix2>; 6], instructions: Vec<Instruction>) -> Self {
+        Self {
+            sides,
+            instructions,
+            current_position: (0, 0, 0),
+            current_direction: Direction::Right,
+        }
+    }
+
+    fn turn_left(direction: &mut Direction) {
+        *direction = match direction {
+            Direction::Up => Direction::Left,
+            Direction::Down => Direction::Right,
+            Direction::Left => Direction::Down,
+            Direction::Right => Direction::Up,
+        }
+    }
+
+    fn turn_right(direction: &mut Direction) {
+        *direction = match direction {
+            Direction::Up => Direction::Right,
+            Direction::Down => Direction::Left,
+            Direction::Left => Direction::Up,
+            Direction::Right => Direction::Down,
+        }
+    }
+
+    fn follow_instructions(&mut self) {
+        let side_shape = self.sides[0].shape();
+        let side_rows = side_shape[0];
+        let side_cols = side_shape[1];
+        for instruction in &self.instructions {
+            match instruction {
+                Instruction::TurnLeft => Self::turn_left(&mut self.current_direction),
+                Instruction::TurnRight => Self::turn_right(&mut self.current_direction),
+                Instruction::Forward(steps) => {
+                    for _ in 0..*steps {
+                        let (current_side, current_row, current_col) = self.current_position;
+                        let (mut new_side, mut new_row, mut new_col) = self.current_position;
+                        let mut new_direction = self.current_direction;
+
+                        if side_rows == 4 {
+                            // Example
+                            //       000
+                            //       000
+                            //       000
+                            // 111222333
+                            // 111222333
+                            // 111222333
+                            //       444555
+                            //       444555
+                            //       444555
+                            match self.current_direction {
+                                Direction::Up => {
+                                    if current_row == 0 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 1;
+                                                new_col = side_cols - 1 - current_col;
+                                                new_direction = Direction::Down;
+                                            }
+                                            1 => {
+                                                new_side = 0;
+                                                new_col = side_cols - 1 - current_col;
+                                                new_direction = Direction::Down;
+                                            }
+                                            2 => {
+                                                new_side = 0;
+                                                new_col = 0;
+                                                new_row = current_col;
+                                                new_direction = Direction::Right;
+                                            }
+                                            3 => {
+                                                new_side = 0;
+                                                new_row = side_rows - 1;
+                                            }
+                                            4 => {
+                                                new_side = 3;
+                                                new_row = side_rows - 1;
+                                            }
+                                            5 => {
+                                                new_side = 3;
+                                                new_col = side_cols - 1;
+                                                new_row = side_rows - 1 - current_col;
+                                                new_direction = Direction::Left;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_row -= 1;
+                                    }
+                                }
+                                Direction::Down => {
+                                    if current_row == side_rows - 1 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 3;
+                                                new_row = 0;
+                                            }
+                                            1 => {
+                                                new_side = 4;
+                                                new_col = side_cols - 1 - current_col;
+                                                new_direction = Direction::Up;
+                                            }
+                                            2 => {
+                                                new_side = 4;
+                                                new_row = current_col;
+                                                new_col = 0;
+                                                new_direction = Direction::Right;
+                                            }
+                                            3 => {
+                                                new_side = 4;
+                                                new_row = 0;
+                                            }
+                                            4 => {
+                                                new_side = 1;
+                                                new_col = side_cols - 1 - current_col;
+                                                new_direction = Direction::Up;
+                                            }
+                                            5 => {
+                                                new_side = 1;
+                                                new_row = current_col;
+                                                new_col = 0;
+                                                new_direction = Direction::Right;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_row += 1;
+                                    }
+                                }
+                                Direction::Left => {
+                                    if current_col == 0 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 2;
+                                                new_row = 0;
+                                                new_col = current_row;
+                                                new_direction = Direction::Down;
+                                            }
+                                            1 => {
+                                                new_side = 5;
+                                                new_row = side_rows - 1;
+                                                new_col = side_cols - 1 - current_row;
+                                                new_direction = Direction::Up;
+                                            }
+                                            2 => {
+                                                new_side = 1;
+                                                new_col = side_cols - 1;
+                                            }
+                                            3 => {
+                                                new_side = 2;
+                                                new_col = side_cols - 1;
+                                            }
+                                            4 => {
+                                                new_side = 2;
+                                                new_row = side_rows - 1;
+                                                new_col = side_cols - 1 - current_row;
+                                                new_direction = Direction::Up;
+                                            }
+                                            5 => {
+                                                new_side = 4;
+                                                new_col = side_cols - 1;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_col -= 1;
+                                    }
+                                }
+                                Direction::Right => {
+                                    if current_col == side_cols - 1 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 5;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_col = side_cols - 1;
+                                                new_direction = Direction::Left;
+                                            }
+                                            1 => {
+                                                new_side = 2;
+                                                new_col = 0;
+                                            }
+                                            2 => {
+                                                new_side = 3;
+                                                new_col = 0;
+                                            }
+                                            3 => {
+                                                new_side = 5;
+                                                new_row = 0;
+                                                new_col = side_cols - 1 - current_row;
+                                                new_direction = Direction::Down;
+                                            }
+                                            4 => {
+                                                new_side = 5;
+                                                new_col = 0;
+                                            }
+                                            5 => {
+                                                new_side = 0;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_col = side_cols - 1;
+                                                new_direction = Direction::Left;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_col += 1;
+                                    }
+                                }
+                            }
+                        } else {
+                            // Input
+                            //    000111
+                            //    000111
+                            //    000111
+                            //    222
+                            //    222
+                            //    222
+                            // 333444
+                            // 333444
+                            // 333444
+                            // 555
+                            // 555
+                            // 555
+                            match self.current_direction {
+                                Direction::Up => {
+                                    if current_row == 0 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 5;
+                                                new_row = current_col;
+                                                new_col = 0;
+                                                new_direction = Direction::Right;
+                                            }
+                                            1 => {
+                                                new_side = 5;
+                                                new_row = side_rows - 1;
+                                            }
+                                            2 => {
+                                                new_side = 0;
+                                                new_row = side_rows - 1;
+                                            }
+                                            3 => {
+                                                new_side = 2;
+                                                new_col = 0;
+                                                new_row = current_col;
+                                                new_direction = Direction::Right;
+                                            }
+                                            4 => {
+                                                new_side = 2;
+                                                new_row = side_rows - 1;
+                                            }
+                                            5 => {
+                                                new_side = 3;
+                                                new_row = side_rows - 1;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_row -= 1;
+                                    }
+                                }
+                                Direction::Down => {
+                                    if current_row == side_rows - 1 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 2;
+                                                new_row = 0;
+                                            }
+                                            1 => {
+                                                new_side = 2;
+                                                new_col = side_cols - 1;
+                                                new_row = current_col;
+                                                new_direction = Direction::Left;
+                                            }
+                                            2 => {
+                                                new_side = 4;
+                                                new_row = 0;
+                                            }
+                                            3 => {
+                                                new_side = 5;
+                                                new_row = 0;
+                                            }
+                                            4 => {
+                                                new_side = 5;
+                                                new_col = side_cols - 1;
+                                                new_row = current_col;
+                                                new_direction = Direction::Left;
+                                            }
+                                            5 => {
+                                                new_side = 1;
+                                                new_row = 0;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_row += 1;
+                                    }
+                                }
+                                Direction::Left => {
+                                    if current_col == 0 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 3;
+                                                new_col = 0;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_direction = Direction::Right;
+                                            }
+                                            1 => {
+                                                new_side = 0;
+                                                new_col = side_cols - 1;
+                                            }
+                                            2 => {
+                                                new_side = 3;
+                                                new_row = 0;
+                                                new_col = current_row;
+                                                new_direction = Direction::Down;
+                                            }
+                                            3 => {
+                                                new_side = 0;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_col = 0;
+                                                new_direction = Direction::Right;
+                                            }
+                                            4 => {
+                                                new_side = 3;
+                                                new_col = side_cols - 1;
+                                            }
+                                            5 => {
+                                                new_side = 0;
+                                                new_row = 0;
+                                                new_col = current_row;
+                                                new_direction = Direction::Down;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_col -= 1;
+                                    }
+                                }
+                                Direction::Right => {
+                                    if current_col == side_cols - 1 {
+                                        match current_side {
+                                            0 => {
+                                                new_side = 1;
+                                                new_col = 0;
+                                            }
+                                            1 => {
+                                                new_side = 4;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_col = side_cols - 1;
+                                                new_direction = Direction::Left;
+                                            }
+                                            2 => {
+                                                new_side = 1;
+                                                new_row = side_rows - 1;
+                                                new_col = current_row;
+                                                new_direction = Direction::Up;
+                                            }
+                                            3 => {
+                                                new_side = 4;
+                                                new_col = 0;
+                                            }
+                                            4 => {
+                                                new_side = 1;
+                                                new_col = side_cols - 1;
+                                                new_row = side_rows - 1 - current_row;
+                                                new_direction = Direction::Left;
+                                            }
+                                            5 => {
+                                                new_side = 4;
+                                                new_row = side_rows - 1;
+                                                new_col = current_row;
+                                                new_direction = Direction::Up;
+                                            }
+                                            _ => unreachable!(),
+                                        }
+                                    } else {
+                                        new_col += 1;
+                                    }
+                                }
+                            }
+                        }
+
+                        if self.sides[new_side][[new_row, new_col]] != Tile::Wall {
+                            self.current_position = (new_side, new_row, new_col);
+                            self.current_direction = new_direction;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn points(&self) -> u32 {
+        let side_shape = self.sides[0].shape();
+        let (current_side, side_row, side_col) = self.current_position;
+        let (current_row, current_col) = if side_shape[0] == 4 {
+            // Example
+            //   0
+            // 123
+            //   45
+            match current_side {
+                0 => (side_row, 2 * side_shape[1] + side_col),
+                1 => (side_shape[0] + side_row, side_col),
+                2 => (side_shape[0] + side_row, side_shape[1] + side_col),
+                3 => (side_shape[0] + side_row, 2 * side_shape[1] + side_col),
+                4 => (2 * side_shape[0] + side_row, 2 * side_shape[1] + side_col),
+                5 => (2 * side_shape[0] + side_row, 3 * side_shape[1] + side_col),
+                _ => unreachable!(),
+            }
+        } else {
+            // Input
+            //  01
+            //  2
+            // 34
+            // 5
+            match current_side {
+                0 => (side_row, side_shape[1] + side_col),
+                1 => (side_row, 2 * side_shape[1] + side_col),
+                2 => (side_shape[0] + side_row, side_shape[1] + side_col),
+                3 => (2 * side_shape[0] + side_row, side_col),
+                4 => (2 * side_shape[0] + side_row, side_shape[1] + side_col),
+                5 => (3 * side_shape[0] + side_row, side_col),
+                _ => unreachable!(),
+            }
+        };
+
+        1000 * (current_row as u32 + 1)
+            + 4 * (current_col as u32 + 1)
+            + self.current_direction.points()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Instruction {
     Forward(usize),
@@ -297,6 +743,91 @@ fn parse_board(contents: &str) -> Board {
     Board::new(map, instructions)
 }
 
+// fn rotate_matrix<T>(array: &ArrayView<T, Ix2>, count: usize) -> Array<T, Ix2>
+// where
+//     T: Default + Copy,
+// {
+//     let shape = array.shape();
+//     assert_eq!(shape[0], shape[1]);
+
+//     let mut result = array.to_owned();
+//     for _ in 0..count {
+//         result = {
+//             let mut rotated = Array::<T, Ix2>::default((shape[0], shape[1]).f());
+//             for row in 0..shape[0] {
+//                 for col in 0..shape[1] {
+//                     rotated[[row, col]] = result[[shape[1] - 1 - col, row]];
+//                 }
+//             }
+//             rotated
+//         };
+//     }
+//     result
+// }
+
+fn parse_cube(contents: &str) -> Cube {
+    let (rest, map) = parse_map(contents).expect("failed to parse map");
+    let (_, instructions) = parse_instructions(rest).expect("failed to parse instructions");
+
+    let map_shape = map.shape();
+    let (side_rows, side_cols) = if map_shape[0] == 12 {
+        // Example
+        (map_shape[0] / 3, map_shape[1] / 4)
+    } else {
+        // Input
+        (map_shape[0] / 4, map_shape[1] / 3)
+    };
+
+    let sides = if side_rows == 4 {
+        // Example
+        //   1
+        // 234
+        //   56
+        [
+            map.slice(s![0..side_rows, 2 * side_cols..3 * side_cols])
+                .to_owned(),
+            map.slice(s![side_rows..2 * side_rows, 0..side_cols])
+                .to_owned(),
+            map.slice(s![side_rows..2 * side_rows, side_cols..2 * side_cols])
+                .to_owned(),
+            map.slice(s![side_rows..2 * side_rows, 2 * side_cols..3 * side_cols])
+                .to_owned(),
+            map.slice(s![
+                2 * side_rows..3 * side_rows,
+                2 * side_cols..3 * side_cols
+            ])
+            .to_owned(),
+            map.slice(s![
+                2 * side_rows..3 * side_rows,
+                3 * side_cols..4 * side_cols
+            ])
+            .to_owned(),
+        ]
+    } else {
+        // Input
+        //  01
+        //  2
+        // 34
+        // 5
+        [
+            map.slice(s![0..side_rows, side_cols..2 * side_cols])
+                .to_owned(),
+            map.slice(s![0..side_rows, 2 * side_cols..3 * side_cols])
+                .to_owned(),
+            map.slice(s![side_rows..2 * side_rows, side_cols..2 * side_cols])
+                .to_owned(),
+            map.slice(s![2 * side_rows..3 * side_rows, 0..side_cols])
+                .to_owned(),
+            map.slice(s![2 * side_rows..3 * side_rows, side_cols..2 * side_cols])
+                .to_owned(),
+            map.slice(s![3 * side_rows..4 * side_rows, 0..side_cols])
+                .to_owned(),
+        ]
+    };
+
+    Cube::new(sides, instructions)
+}
+
 #[test]
 fn test_parse_map() {
     let input = "        ...#\n        .#..\n        #...\n        ....\n...#.......#\n........#...\n..#....#....\n..........#.\n        ...#....\n        .....#..\n        .#......\n        ......#.\n\n";
@@ -374,9 +905,46 @@ fn test_parse_board() {
 }
 
 #[test]
-fn test_follow_instructions() {
+fn test_follow_instructions_board() {
     let contents = "        ...#\n        .#..\n        #...\n        ....\n...#.......#\n........#...\n..#....#....\n..........#.\n        ...#....\n        .....#..\n        .#......\n        ......#.\n\n10R5L5R10L4R5L5\n";
     let mut board = parse_board(contents);
     board.follow_instructions();
     assert_eq!(board.points(), 6032);
 }
+
+#[test]
+fn test_parse_cube() {
+    let contents = "        ...#\n        .#..\n        #...\n        ....\n...#.......#\n........#...\n..#....#....\n..........#.\n        ...#....\n        .....#..\n        .#......\n        ......#.\n\n10R5L5R10L4R5L5\n";
+    let cube = parse_cube(contents);
+    for i in 0..6 {
+        assert_eq!(cube.sides[i].shape(), &[4, 4]);
+    }
+    assert_eq!(cube.instructions.len(), 13);
+}
+
+#[test]
+fn test_follow_instructions_cube() {
+    let contents = "        ...#\n        .#..\n        #...\n        ....\n...#.......#\n........#...\n..#....#....\n..........#.\n        ...#....\n        .....#..\n        .#......\n        ......#.\n\n10R5L5R10L4R5L5\n";
+    let mut cube = parse_cube(contents);
+    cube.follow_instructions();
+    assert_eq!(cube.points(), 5031);
+}
+
+// #[test]
+// fn test_rotate_matrix() {
+//     {
+//         let array = array![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+//         let rotated = rotate_matrix(&array.view(), 1);
+//         assert_eq!(rotated, array![[7, 4, 1], [8, 5, 2], [9, 6, 3],]);
+//     }
+//     {
+//         let array = array![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+//         let rotated = rotate_matrix(&array.view(), 2);
+//         assert_eq!(rotated, array![[9, 8, 7], [6, 5, 4], [3, 2, 1],]);
+//     }
+//     {
+//         let array = array![[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+//         let rotated = rotate_matrix(&array.view(), 4);
+//         assert_eq!(rotated, array);
+//     }
+// }
