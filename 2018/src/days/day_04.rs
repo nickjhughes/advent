@@ -147,7 +147,8 @@ fn sleepiest_guard(entries: Option<Vec<LogEntry>>) -> u32 {
     (sleepiest_guard_id.unwrap() as u32) * (sleepiest_minute.unwrap() as u32)
 }
 
-fn sleepiest_minute_guard(entries: Option<Vec<LogEntry>>) -> u32 {
+#[allow(dead_code)]
+fn sleepiest_minute_guard(_entries: Option<Vec<LogEntry>>) -> u32 {
     0
 }
 
