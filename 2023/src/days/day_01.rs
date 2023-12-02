@@ -3,13 +3,13 @@ use std::fs;
 pub fn part1() -> String {
     let input = get_input_file_contents();
     let sum = first_and_last_ascii_digits(&input);
-    format!("{sum}")
+    sum.to_string()
 }
 
 pub fn part2() -> String {
     let input = get_input_file_contents();
     let sum = first_and_last_ascii_and_written_digits(&input);
-    format!("{sum}")
+    sum.to_string()
 }
 
 fn get_input_file_contents() -> String {
