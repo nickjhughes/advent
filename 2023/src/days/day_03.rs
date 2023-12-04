@@ -29,6 +29,7 @@ fn input_to_grid(input: &str) -> Vec<&[u8]> {
 
 fn get_number_positions(grid: &[&[u8]]) -> Vec<(usize, usize, usize)> {
     let mut number_positions = Vec::new();
+    #[allow(clippy::needless_range_loop)]
     for row in 0..grid.len() {
         let mut start_col = None;
         for col in 0..grid[row].len() {
@@ -36,10 +37,8 @@ fn get_number_positions(grid: &[&[u8]]) -> Vec<(usize, usize, usize)> {
                 if start_col.is_none() {
                     start_col = Some(col);
                 }
-            } else {
-                if let Some(start_col) = start_col.take() {
-                    number_positions.push((row, start_col, col - 1));
-                }
+            } else if let Some(start_col) = start_col.take() {
+                number_positions.push((row, start_col, col - 1));
             }
         }
         if let Some(start_col) = start_col.take() {
@@ -61,7 +60,7 @@ fn get_part_numbers(grid: &[&[u8]]) -> Vec<u64> {
 
     let mut part_numbers = Vec::new();
     for (row, start_col, end_col) in number_positions {
-        if is_part_number(&grid, row, start_col, end_col) {
+        if is_part_number(grid, row, start_col, end_col) {
             part_numbers.push(position_to_number(grid, row, start_col, end_col));
         }
     }

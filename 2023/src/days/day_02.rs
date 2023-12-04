@@ -17,7 +17,7 @@ fn get_input_file_contents() -> String {
 }
 
 fn parse_games(input: &str) -> Vec<Game> {
-    input.lines().map(|line| Game::parse(line)).collect()
+    input.lines().map(Game::parse).collect()
 }
 
 fn possible_games_id_sum(games: &[Game], counts: (u8, u8, u8)) -> usize {
