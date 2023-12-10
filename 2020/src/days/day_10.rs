@@ -10,8 +10,8 @@ pub fn part1() -> String {
 
 pub fn part2() -> String {
     let input = get_input_file_contents();
-    let _adaptors = parse_adaptors(&input);
-    "".into()
+    let adaptors = parse_adaptors(&input);
+    total_arrangements(&adaptors).to_string()
 }
 
 fn get_input_file_contents() -> String {
@@ -45,6 +45,42 @@ fn differences(joltages: &[u8]) -> (usize, usize) {
     )
 }
 
+fn total_arrangements(adaptors: &[u8]) -> usize {
+    let adaptors = {
+        let mut a = adaptors.to_vec();
+        a.push(0);
+        a.push(a.iter().max().unwrap() + 3);
+        a.sort_unstable();
+        a
+    };
+    arrangements(&adaptors, 0, &mut HashMap::new())
+}
+
+fn arrangements(adaptors: &[u8], start: usize, states: &mut HashMap<usize, usize>) -> usize {
+    if start == adaptors.len() - 1 {
+        return 1;
+    }
+
+    let next_options = adaptors[start..]
+        .iter()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, a)| **a <= adaptors[start] + 3)
+        .map(|(i, _)| start + i)
+        .collect::<Vec<usize>>();
+    let mut count = 0;
+    for next in next_options {
+        if let Some(next_count) = states.get(&next) {
+            count += next_count;
+        } else {
+            let next_count = arrangements(adaptors, next, states);
+            states.insert(next, next_count);
+            count += next_count;
+        }
+    }
+    count
+}
+
 #[test]
 fn test_parse() {
     let input = "16\n10\n15\n5\n1\n11\n7\n19\n6\n12\n4\n";
@@ -70,5 +106,20 @@ fn test_ordered_differences() {
         let differences = differences(&ordered_joltages);
         assert_eq!(differences.0, 22);
         assert_eq!(differences.1, 10);
+    }
+}
+
+#[test]
+fn test_arrangements() {
+    {
+        let input = "16\n10\n15\n5\n1\n11\n7\n19\n6\n12\n4\n";
+        let adaptors = parse_adaptors(input);
+        assert_eq!(total_arrangements(&adaptors), 8);
+    }
+
+    {
+        let input = "28\n33\n18\n42\n31\n14\n46\n20\n48\n47\n24\n23\n49\n45\n19\n38\n39\n11\n1\n32\n25\n35\n8\n17\n7\n9\n4\n2\n34\n10\n3\n";
+        let adaptors = parse_adaptors(input);
+        assert_eq!(total_arrangements(&adaptors), 19208);
     }
 }
