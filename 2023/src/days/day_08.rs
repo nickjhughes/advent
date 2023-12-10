@@ -1,9 +1,8 @@
+use num::Integer;
 use std::{
     collections::{HashMap, HashSet},
     fs,
 };
-
-use num::Integer;
 
 pub fn part1() -> String {
     let input = get_input_file_contents();
