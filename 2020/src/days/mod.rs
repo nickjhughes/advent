@@ -17,6 +17,7 @@ pub struct DayFunctions {
 pub fn get_day_functions(day: u8) -> Option<DayFunctions> {
     match day {
         10 => Some(day_functions!(day_10)),
+        15 => Some(day_functions!(day_15)),
         _ => None,
     }
 }
