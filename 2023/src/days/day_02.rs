@@ -108,25 +108,20 @@ fn test_parse_games() {
 
 #[test]
 fn test_is_possible() {
-    assert_eq!(
-        Game(vec![(4, 0, 3), (1, 2, 6), (0, 2, 0)]).is_possible((12, 13, 14)),
-        true
+    assert!(
+        Game(vec![(4, 0, 3), (1, 2, 6), (0, 2, 0)]).is_possible((12, 13, 14))
     );
-    assert_eq!(
-        Game(vec![(0, 2, 1), (1, 3, 4), (0, 1, 1)]).is_possible((12, 13, 14)),
-        true
+    assert!(
+        Game(vec![(0, 2, 1), (1, 3, 4), (0, 1, 1)]).is_possible((12, 13, 14))
     );
-    assert_eq!(
-        Game(vec![(20, 8, 6), (4, 13, 5), (1, 5, 0)]).is_possible((12, 13, 14)),
-        false
+    assert!(
+        !Game(vec![(20, 8, 6), (4, 13, 5), (1, 5, 0)]).is_possible((12, 13, 14))
     );
-    assert_eq!(
-        Game(vec![(3, 1, 6), (6, 3, 0), (14, 3, 15)]).is_possible((12, 13, 14)),
-        false
+    assert!(
+        !Game(vec![(3, 1, 6), (6, 3, 0), (14, 3, 15)]).is_possible((12, 13, 14))
     );
-    assert_eq!(
-        Game(vec![(6, 3, 1), (1, 2, 2)]).is_possible((12, 13, 14)),
-        true
+    assert!(
+        Game(vec![(6, 3, 1), (1, 2, 2)]).is_possible((12, 13, 14))
     );
 }
 

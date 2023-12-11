@@ -250,13 +250,11 @@ impl JokerHand {
                     } else {
                         HandType::FourOfAKind
                     }
+                } else if self.cards.contains(&JokerCard::Joker) {
+                    // JJJ?? or ???JJ
+                    HandType::FiveOfAKind
                 } else {
-                    if self.cards.contains(&JokerCard::Joker) {
-                        // JJJ?? or ???JJ
-                        HandType::FiveOfAKind
-                    } else {
-                        HandType::FullHouse
-                    }
+                    HandType::FullHouse
                 }
             }
             3 => {
@@ -267,18 +265,16 @@ impl JokerHand {
                     } else {
                         HandType::ThreeOfAKind
                     }
-                } else {
-                    if self.cards.contains(&JokerCard::Joker) {
-                        if *card_counts.get(&JokerCard::Joker).unwrap() == 1 {
-                            // J??__
-                            HandType::FullHouse
-                        } else {
-                            // JJ??_
-                            HandType::FourOfAKind
-                        }
+                } else if self.cards.contains(&JokerCard::Joker) {
+                    if *card_counts.get(&JokerCard::Joker).unwrap() == 1 {
+                        // J??__
+                        HandType::FullHouse
                     } else {
-                        HandType::TwoPair
+                        // JJ??_
+                        HandType::FourOfAKind
                     }
+                } else {
+                    HandType::TwoPair
                 }
             }
             4 => {

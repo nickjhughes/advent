@@ -414,13 +414,13 @@ fn test_parse() {
 fn test_furthest_point_in_loop() {
     {
         let input = "-L|F7\n7S-7|\nL|7||\n-L-J|\nL|-JF\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.furthest_point_in_loop(), 4);
     }
 
     {
         let input = "7-F7-\n.FJ|7\nSJLL7\n|F--J\nLJ.LJ\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.furthest_point_in_loop(), 8);
     }
 }
@@ -429,25 +429,25 @@ fn test_furthest_point_in_loop() {
 fn test_tiles_enclosed_by_loop() {
     {
         let input = "...........\n.S-------7.\n.|F-----7|.\n.||.....||.\n.||.....||.\n.|L-7.F-J|.\n.|..|.|..|.\n.L--J.L--J.\n...........\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.tiles_enclosed_by_loop(), 4);
     }
 
     {
         let input = "..........\n.S------7.\n.|F----7|.\n.||....||.\n.||....||.\n.|L-7F-J|.\n.|..||..|.\n.L--JL--J.\n..........\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.tiles_enclosed_by_loop(), 4);
     }
 
     {
         let input = ".F----7F7F7F7F-7....\n.|F--7||||||||FJ....\n.||.FJ||||||||L7....\nFJL7L7LJLJ||LJ.L-7..\nL--J.L7...LJS7F-7L7.\n....F-J..F7FJ|L7L7L7\n....L7.F7||L7|.L7L7|\n.....|FJLJ|FJ|F7|.LJ\n....FJL-7.||.||||...\n....L---J.LJ.LJLJ...\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.tiles_enclosed_by_loop(), 8);
     }
 
     {
         let input = "FF7FSF7F7F7F7F7F---7\nL|LJ||||||||||||F--J\nFL-7LJLJ||||||LJL-77\nF--JF--7||LJLJ7F7FJ-\nL---JF-JLJ.||-FJLJJ7\n|F|F-JF---7F7-L7L|7|\n|FFJF7L7F-JF7|JL---7\n7-L-JL7||F7|L7F-7F7|\nL.L7LFJ|||||FJL7||LJ\nL7JLJL-JLJLJL--JLJ.L\n";
-        let map = Map::parse(&input);
+        let map = Map::parse(input);
         assert_eq!(map.tiles_enclosed_by_loop(), 10);
     }
 }
