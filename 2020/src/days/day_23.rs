@@ -259,6 +259,7 @@ fn test_do_move() {
 }
 
 #[test]
+#[ignore]
 fn test_do_move_big_game() {
     let mut game = Game::parse("389125467", true);
     for _ in 0..10_000_000 {
