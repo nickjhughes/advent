@@ -6,6 +6,9 @@ edition = "2021"
 [profile.release]
 debug = true
 
+[profile.test]
+opt-level = 3
+
 [dependencies]
 anyhow = "1.0"
 automod = "1.0"
