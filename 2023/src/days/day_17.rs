@@ -1,17 +1,16 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-};
+use hashbrown::{HashMap, HashSet};
+use std::fs;
 
 pub fn part1() -> String {
     let input = get_input_file_contents();
     let map = Map::parse(&input);
-    map.minimal_heat_loss().to_string()
+    map.minimal_heat_loss(1, 3).to_string()
 }
 
 pub fn part2() -> String {
-    let _input = get_input_file_contents();
-    "".into()
+    let input = get_input_file_contents();
+    let map = Map::parse(&input);
+    map.minimal_heat_loss(4, 10).to_string()
 }
 
 fn get_input_file_contents() -> String {
@@ -22,6 +21,27 @@ fn get_input_file_contents() -> String {
 struct Map {
     blocks: Vec<u8>,
     width: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+struct SearchNode {
+    index: usize,
+    dir: Dir,
+    steps: u8,
+}
+
+impl SearchNode {
+    fn new(index: usize, dir: Dir, steps: u8) -> Self {
+        SearchNode { index, dir, steps }
+    }
 }
 
 impl Map {
@@ -44,121 +64,154 @@ impl Map {
         self.blocks.len() / self.width
     }
 
-    fn minimal_heat_loss(&self) -> u32 {
-        let mut open_set: HashSet<usize> = HashSet::new();
-        open_set.insert(0);
+    fn minimal_heat_loss(&self, min_steps: u8, max_steps: u8) -> u32 {
+        let mut open_set: HashSet<SearchNode> = HashSet::new();
+        open_set.insert(SearchNode::new(0, Dir::Right, 0));
 
-        let mut came_from: HashMap<usize, usize> = HashMap::new();
+        let mut heat_loss: HashMap<SearchNode, u32> = HashMap::new();
+        heat_loss.insert(SearchNode::new(0, Dir::Right, 0), 0);
 
-        let mut g_score: HashMap<usize, u32> = HashMap::new();
-        g_score.insert(0, 0);
-
-        let mut f_score: HashMap<usize, u32> = HashMap::new();
-        f_score.insert(0, self.heuristic(0));
+        let mut prev: HashMap<SearchNode, SearchNode> = HashMap::new();
 
         while !open_set.is_empty() {
             let mut min_node = None;
-            let mut min_f_score = u32::MAX;
+            let mut min_heat_loss = u32::MAX;
             for node in open_set.iter() {
-                if let Some(f) = f_score.get(node) {
-                    if *f < min_f_score {
+                if let Some(hl) = heat_loss.get(node) {
+                    if *hl < min_heat_loss {
                         min_node = Some(*node);
-                        min_f_score = *f;
+                        min_heat_loss = *hl;
                     }
                 }
             }
             let current = open_set.take(&min_node.unwrap()).unwrap();
-            let current_row = current / self.width;
-            let current_col = current % self.width;
+            let current_row = current.index / self.width;
+            let current_col = current.index % self.width;
 
             if current_col == self.width - 1 && current_row == self.height() - 1 {
+                // Reached goal
+
                 // Goal reached, reconstruct path
                 let mut path = Vec::new();
                 path.push(current);
                 let mut node = current;
-                let mut heat_loss = self.blocks[node] as u32;
-                while let Some(prev) = came_from.get(&node) {
+                while let Some(prev) = prev.get(&node) {
                     path.push(*prev);
-                    heat_loss += self.blocks[*prev] as u32;
                     node = *prev;
                 }
 
-                // TODO: Print grid + path
-                for row in 0..self.height() {
-                    for col in 0..self.width {
-                        if path.contains(&(row * &self.width + col)) {
-                            print!("#");
-                        } else {
-                            print!("{}", self.blocks[row * self.width + col]);
-                        }
-                    }
-                    println!();
-                }
-                println!();
+                // Print grid + path
+                // for row in 0..self.height() {
+                //     for col in 0..self.width {
+                //         if let Some(node) = path.iter().find(|n| n.index == row * &self.width + col)
+                //         {
+                //             print!(
+                //                 "{}",
+                //                 match node.dir {
+                //                     Dir::Up => "^",
+                //                     Dir::Down => "v",
+                //                     Dir::Left => "<",
+                //                     Dir::Right => ">",
+                //                 }
+                //             );
+                //         } else {
+                //             print!("{}", self.blocks[row * self.width + col]);
+                //         }
+                //     }
+                //     println!();
+                // }
+                // println!();
 
-                return heat_loss;
-            }
-
-            // Keep track of the last three directions
-            let mut all_left = false;
-            let mut all_right = false;
-            let mut all_up = false;
-            let mut all_down = false;
-            if let Some(prev) = came_from.get(&current) {
-                if let Some(prev2) = came_from.get(prev) {
-                    if let Some(prev3) = came_from.get(prev2) {
-                        all_right = *prev == current.saturating_sub(1)
-                            && *prev2 == prev.saturating_sub(1)
-                            && *prev3 == prev2.saturating_sub(1);
-                        all_left =
-                            *prev == current + 1 && *prev2 == prev + 1 && *prev3 == prev2 + 1;
-                        all_down = *prev == current.saturating_sub(self.width)
-                            && *prev2 == prev.saturating_sub(self.width)
-                            && *prev3 == prev2.saturating_sub(self.width);
-                        all_up = *prev == current + self.width
-                            && *prev2 == prev - self.width
-                            && *prev3 == prev2 - self.width;
-                    }
-                }
+                return *heat_loss.get(&current).unwrap();
             }
 
             // Go through neighbors
-            let mut neighbors = Vec::new();
             // Up
-            if !all_up
-                && current_row > 0
-                && came_from.get(&current) != Some(&((current_row - 1) * self.width + current_col))
+            let up = if current_row > 0
+                && current.dir != Dir::Down
+                && !(current.dir == Dir::Up && current.steps == max_steps)
+                && !(current.dir != Dir::Up && current.steps < min_steps)
             {
-                neighbors.push((current_row - 1) * self.width + current_col);
-            }
+                Some(SearchNode::new(
+                    (current_row - 1) * self.width + current_col,
+                    Dir::Up,
+                    if current.dir == Dir::Up {
+                        current.steps + 1
+                    } else {
+                        1
+                    },
+                ))
+            } else {
+                None
+            };
             // Down
-            if !all_down
-                && current_row < self.height() - 1
-                && came_from.get(&current) != Some(&((current_row + 1) * self.width + current_col))
+            let down = if current_row < self.height() - 1
+                && current.dir != Dir::Up
+                && !(current.dir == Dir::Down && current.steps == max_steps)
+                && !(current.dir != Dir::Down && current.steps < min_steps)
+                && !(min_steps > 1
+                    && current_row == self.height() - 2
+                    && current_col == self.width - 1
+                    && (current.dir != Dir::Down || current.steps < min_steps - 1))
             {
-                neighbors.push((current_row + 1) * self.width + current_col);
-            }
+                Some(SearchNode::new(
+                    (current_row + 1) * self.width + current_col,
+                    Dir::Down,
+                    if current.dir == Dir::Down {
+                        current.steps + 1
+                    } else {
+                        1
+                    },
+                ))
+            } else {
+                None
+            };
             // Left
-            if !all_left
-                && current_col > 0
-                && came_from.get(&current) != Some(&(current_row * self.width + current_col - 1))
+            let left = if current_col > 0
+                && current.dir != Dir::Right
+                && !(current.dir == Dir::Left && current.steps == max_steps)
+                && !(current.dir != Dir::Left && current.steps < min_steps)
             {
-                neighbors.push(current_row * self.width + current_col - 1);
-            }
+                Some(SearchNode::new(
+                    current_row * self.width + current_col - 1,
+                    Dir::Left,
+                    if current.dir == Dir::Left {
+                        current.steps + 1
+                    } else {
+                        1
+                    },
+                ))
+            } else {
+                None
+            };
             // Right
-            if !all_right
-                && current_col < self.height() - 1
-                && came_from.get(&current) != Some(&(current_row * self.width + current_col + 1))
+            let right = if current_col < self.width - 1
+                && current.dir != Dir::Left
+                && !(current.dir == Dir::Right && current.steps == max_steps)
+                && !(current.dir != Dir::Right && current.steps < min_steps)
+                && !(min_steps > 1
+                    && current_row == self.height() - 1
+                    && current_col == self.width - 2
+                    && (current.dir != Dir::Right || current.steps < min_steps - 1))
             {
-                neighbors.push(current_row * self.width + current_col + 1);
-            }
-            for neighbor in neighbors {
-                let tentative_g_score =
-                    g_score.get(&current).unwrap() + self.blocks[neighbor] as u32;
-                if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&u32::MAX) {
-                    came_from.insert(neighbor, current);
-                    g_score.insert(neighbor, tentative_g_score);
-                    f_score.insert(neighbor, tentative_g_score + self.heuristic(neighbor));
+                Some(SearchNode::new(
+                    current_row * self.width + current_col + 1,
+                    Dir::Right,
+                    if current.dir == Dir::Right && current.index != 0 {
+                        current.steps + 1
+                    } else {
+                        1
+                    },
+                ))
+            } else {
+                None
+            };
+            for neighbor in [up, down, left, right].into_iter().flatten() {
+                let tentative_dist =
+                    heat_loss.get(&current).unwrap() + self.blocks[neighbor.index] as u32;
+                if tentative_dist < *heat_loss.get(&neighbor).unwrap_or(&u32::MAX) {
+                    prev.insert(neighbor, current);
+                    heat_loss.insert(neighbor, tentative_dist);
                     if !open_set.contains(&neighbor) {
                         open_set.insert(neighbor);
                     }
@@ -167,15 +220,6 @@ impl Map {
         }
 
         panic!("no path found")
-    }
-
-    fn heuristic(&self, index: usize) -> u32 {
-        0
-        // let row = (index / self.width) as u32;
-        // let col = (index % self.width) as u32;
-        // let goal_row = (self.height() - 1) as u32;
-        // let goal_col = (self.width - 1) as u32;
-        // (goal_col - col) + (goal_row - row)
     }
 }
 
@@ -190,5 +234,20 @@ fn test_parse() {
 fn test_minimal_heat_loss() {
     let input = "2413432311323\n3215453535623\n3255245654254\n3446585845452\n4546657867536\n1438598798454\n4457876987766\n3637877979653\n4654967986887\n4564679986453\n1224686865563\n2546548887735\n4322674655533\n";
     let map = Map::parse(input);
-    assert_eq!(map.minimal_heat_loss(), 102);
+    assert_eq!(map.minimal_heat_loss(1, 3), 102);
+}
+
+#[test]
+fn test_minimal_heat_loss_ultra() {
+    {
+        let input = "2413432311323\n3215453535623\n3255245654254\n3446585845452\n4546657867536\n1438598798454\n4457876987766\n3637877979653\n4654967986887\n4564679986453\n1224686865563\n2546548887735\n4322674655533\n";
+        let map = Map::parse(input);
+        assert_eq!(map.minimal_heat_loss(4, 10), 94);
+    }
+
+    {
+        let input = "111111111111\n999999999991\n999999999991\n999999999991\n999999999991\n";
+        let map = Map::parse(input);
+        assert_eq!(map.minimal_heat_loss(4, 10), 71);
+    }
 }
