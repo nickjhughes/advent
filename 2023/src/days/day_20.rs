@@ -12,14 +12,22 @@ pub fn part1() -> String {
 
 pub fn part2() -> String {
     let input = get_input_file_contents();
-    let mut modules = Modules::parse(&input);
-    loop {
-        modules.push_button();
-    }
+    buttons_presses_until_low_pulse_to_module(&input, "vr").to_string()
 }
 
 fn get_input_file_contents() -> String {
     fs::read_to_string("inputs/input20").expect("Failed to open input file")
+}
+
+fn buttons_presses_until_low_pulse_to_module(input: &str, module: &str) -> u64 {
+    const SECOND_LAST_MODULES: [&str; 4] = ["pq", "fg", "dk", "fm"];
+    let mut button_presses = Vec::new();
+    for second_last_module in SECOND_LAST_MODULES {
+        let mut modules = Modules::parse(input);
+        modules.push_button_until_module_has_high_input(module, second_last_module);
+        button_presses.push(modules.button_presses);
+    }
+    button_presses.iter().product::<u64>()
 }
 
 #[derive(Debug)]
@@ -28,6 +36,7 @@ struct Modules<'input> {
     output: Option<&'input str>,
     button_presses: u64,
     pulse_counts: HashMap<Pulse, u64>,
+    input_buffers: HashMap<&'input str, VecDeque<(&'input str, Pulse)>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -84,6 +93,11 @@ impl<'input> Modules<'input> {
             }
         }
 
+        let mut input_buffers: HashMap<&str, VecDeque<(&str, Pulse)>> = HashMap::new();
+        for module_name in modules.keys() {
+            input_buffers.insert(module_name, VecDeque::new());
+        }
+
         Modules {
             modules,
             output,
@@ -91,6 +105,7 @@ impl<'input> Modules<'input> {
             pulse_counts: ([(Pulse::Low, 0), (Pulse::High, 0)])
                 .into_iter()
                 .collect::<HashMap<Pulse, u64>>(),
+            input_buffers,
         }
     }
 
@@ -98,23 +113,81 @@ impl<'input> Modules<'input> {
         self.pulse_counts.get(&Pulse::Low).unwrap() * self.pulse_counts.get(&Pulse::High).unwrap()
     }
 
+    fn push_button_until_module_has_high_input(&mut self, conj_module: &str, input_module: &str) {
+        loop {
+            self.button_presses += 1;
+
+            self.input_buffers
+                .get_mut("broadcaster")
+                .unwrap()
+                .push_back(("button", Pulse::Low));
+            *self.pulse_counts.get_mut(&Pulse::Low).unwrap() += 1;
+            while !self.input_buffers.values().all(|pulses| pulses.is_empty()) {
+                for module in self.modules.values_mut() {
+                    if let Some((source, pulse)) =
+                        self.input_buffers.get_mut(module.name).unwrap().pop_front()
+                    {
+                        let pulse_to_send = match &mut module.ty {
+                            ModuleType::Broadcast => Some(pulse),
+                            ModuleType::FlipFlop { on } => {
+                                if pulse == Pulse::Low {
+                                    if *on {
+                                        *on = false;
+                                        Some(Pulse::Low)
+                                    } else {
+                                        *on = true;
+                                        Some(Pulse::High)
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                            ModuleType::Conjunction { last_inputs } => {
+                                if module.name == conj_module
+                                    && *last_inputs.get(input_module).unwrap() == Pulse::High
+                                {
+                                    return;
+                                }
+
+                                last_inputs.insert(source, pulse);
+                                if last_inputs.values().all(|p| *p == Pulse::High) {
+                                    Some(Pulse::Low)
+                                } else {
+                                    Some(Pulse::High)
+                                }
+                            }
+                        };
+                        if let Some(pulse_to_send) = pulse_to_send {
+                            *self.pulse_counts.get_mut(&pulse_to_send).unwrap() +=
+                                module.outputs.len() as u64;
+                            for output in module.outputs.iter() {
+                                if self.output == Some(*output) {
+                                    continue;
+                                }
+                                self.input_buffers
+                                    .get_mut(*output)
+                                    .unwrap()
+                                    .push_back((module.name, pulse_to_send));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn push_button(&mut self) {
         self.button_presses += 1;
 
-        let mut input_buffers: HashMap<&str, VecDeque<(&str, Pulse)>> = HashMap::new();
-        for module_name in self.modules.keys() {
-            input_buffers.insert(module_name, VecDeque::new());
-        }
-
-        input_buffers
+        self.input_buffers
             .get_mut("broadcaster")
             .unwrap()
             .push_back(("button", Pulse::Low));
         *self.pulse_counts.get_mut(&Pulse::Low).unwrap() += 1;
-        while !input_buffers.values().all(|pulses| pulses.is_empty()) {
+        while !self.input_buffers.values().all(|pulses| pulses.is_empty()) {
             for module in self.modules.values_mut() {
                 if let Some((source, pulse)) =
-                    input_buffers.get_mut(module.name).unwrap().pop_front()
+                    self.input_buffers.get_mut(module.name).unwrap().pop_front()
                 {
                     let pulse_to_send = match &mut module.ty {
                         ModuleType::Broadcast => Some(pulse),
@@ -145,15 +218,9 @@ impl<'input> Modules<'input> {
                             module.outputs.len() as u64;
                         for output in module.outputs.iter() {
                             if self.output == Some(*output) {
-                                if pulse_to_send == Pulse::Low {
-                                    panic!(
-                                        "rx got a low pulse after {} button presses",
-                                        self.button_presses
-                                    );
-                                }
                                 continue;
                             }
-                            input_buffers
+                            self.input_buffers
                                 .get_mut(*output)
                                 .unwrap()
                                 .push_back((module.name, pulse_to_send));
