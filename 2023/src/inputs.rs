@@ -1,5 +1,5 @@
 use reqwest::blocking::Client;
-use reqwest::header;
+use reqwest::header::{self, USER_AGENT};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -28,6 +28,11 @@ pub fn get_day_input(day: u8) {
                 .expect("Session cookie could not be converted to header"),
         );
     }
+    headers.insert(
+        USER_AGENT,
+        header::HeaderValue::from_str("github.com/nickjhughes/advent")
+            .expect("User agent string could not be converted to header"),
+    );
 
     let client = Client::builder()
         .default_headers(headers)
