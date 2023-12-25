@@ -1,6 +1,5 @@
-use std::fs;
-
 use hashbrown::HashMap;
+use std::fs;
 
 pub fn part1() -> String {
     let input = get_input_file_contents();
