@@ -7,8 +7,11 @@ pub fn part1() -> String {
 }
 
 pub fn part2() -> String {
-    let _input = get_input_file_contents();
-    "".into()
+    let input = get_input_file_contents();
+    let hailstones = parse_hailstones(&input);
+    let intersecting_hailstone = intersecting_hailstone_3d(&hailstones);
+    (intersecting_hailstone.pos.x + intersecting_hailstone.pos.y + intersecting_hailstone.pos.z)
+        .to_string()
 }
 
 fn get_input_file_contents() -> String {
@@ -46,6 +49,67 @@ fn path_intersections_2d(hailstones: &[Hailstone], min: f64, max: f64) -> usize 
         }
     }
     count
+}
+
+fn intersecting_hailstone_3d(hailstones: &[Hailstone]) -> Hailstone {
+    const COEFF_PAIRS: [(usize, usize); 4] = [(0, 1), (0, 2), (0, 3), (0, 4)];
+
+    let rows = COEFF_PAIRS.map(|(i, j)| {
+        nalgebra::RowVector4::new(
+            hailstones[j].vel.y - hailstones[i].vel.y,
+            hailstones[i].vel.x - hailstones[j].vel.x,
+            hailstones[i].pos.y - hailstones[j].pos.y,
+            hailstones[j].pos.x - hailstones[i].pos.x,
+        )
+    });
+    let coefficients = nalgebra::Matrix4::from_rows(&rows);
+    let rhs_value = |n: usize, _| {
+        let i = COEFF_PAIRS[n].0;
+        let j = COEFF_PAIRS[n].1;
+        hailstones[i].pos.x * hailstones[i].vel.y - hailstones[j].pos.x * hailstones[j].vel.y
+            + hailstones[j].pos.y * hailstones[j].vel.x
+            - hailstones[i].pos.y * hailstones[i].vel.x
+    };
+    let rhs = nalgebra::Matrix4x1::from_columns(&[nalgebra::Vector4::from_fn(rhs_value)]);
+    let solution = coefficients.try_inverse().unwrap() * rhs;
+    let x = solution.x;
+    let y = solution.y;
+    let vx = solution.z;
+    let vy = solution.w;
+
+    let rows = COEFF_PAIRS.map(|(i, j)| {
+        nalgebra::RowVector4::new(
+            hailstones[j].vel.z - hailstones[i].vel.z,
+            hailstones[i].vel.x - hailstones[j].vel.x,
+            hailstones[i].pos.z - hailstones[j].pos.z,
+            hailstones[j].pos.x - hailstones[i].pos.x,
+        )
+    });
+    let coefficients = nalgebra::Matrix4::from_rows(&rows);
+    let rhs_value = |n: usize, _| {
+        let i = COEFF_PAIRS[n].0;
+        let j = COEFF_PAIRS[n].1;
+        hailstones[i].pos.x * hailstones[i].vel.z - hailstones[j].pos.x * hailstones[j].vel.z
+            + hailstones[j].pos.z * hailstones[j].vel.x
+            - hailstones[i].pos.z * hailstones[i].vel.x
+    };
+    let rhs = nalgebra::Matrix4x1::from_columns(&[nalgebra::Vector4::from_fn(rhs_value)]);
+    let solution = coefficients.try_inverse().unwrap() * rhs;
+    let z = solution.y;
+    let vz = solution.w;
+
+    Hailstone {
+        pos: Vec3 {
+            x: -x.round(),
+            y: -y.round(),
+            z: -z.round(),
+        },
+        vel: Vec3 {
+            x: -vx.round(),
+            y: -vy.round(),
+            z: -vz.round(),
+        },
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -121,4 +185,25 @@ fn test_path_intersections() {
     let input = "19, 13, 30 @ -2,  1, -2\n18, 19, 22 @ -1, -1, -2\n20, 25, 34 @ -2, -2, -4\n12, 31, 28 @ -1, -2, -1\n20, 19, 15 @  1, -5, -3\n";
     let hailstones = parse_hailstones(input);
     assert_eq!(path_intersections_2d(&hailstones, 7.0, 27.0), 2);
+}
+
+#[test]
+fn test_intersecting_hailstone_3d() {
+    let input = "19, 13, 30 @ -2,  1, -2\n18, 19, 22 @ -1, -1, -2\n20, 25, 34 @ -2, -2, -4\n12, 31, 28 @ -1, -2, -1\n20, 19, 15 @  1, -5, -3\n";
+    let hailstones = parse_hailstones(input);
+    assert_eq!(
+        intersecting_hailstone_3d(&hailstones),
+        Hailstone {
+            pos: Vec3 {
+                x: 24.0,
+                y: 13.0,
+                z: 10.0
+            },
+            vel: Vec3 {
+                x: -3.0,
+                y: 1.0,
+                z: 2.0
+            }
+        }
+    );
 }
