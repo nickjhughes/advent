@@ -15,7 +15,7 @@ contains
     integer, allocatable :: frequencies(:)
 
     ! Read input
-    open(newunit=io, file="inputs/day1", status="old", action="read")
+    open(newunit=io, file="inputs/input01", status="old", action="read")
     allocate(changes(0))
     do while (.true.)
       read(io, *, end=100) change
@@ -23,7 +23,7 @@ contains
     end do
     100 close(io)
 
-    ! Part 1, add all changes
+    ! Part 1
     frequency = 0
     do i = 1, size(changes)
       frequency = frequency + changes(i)
@@ -33,6 +33,7 @@ contains
     ! Part 2
     frequency = 0
     i = 1
+    allocate(frequencies(0))
     do while (.true.)
       frequency = frequency + changes(i)
       if (any(frequencies == frequency)) then
