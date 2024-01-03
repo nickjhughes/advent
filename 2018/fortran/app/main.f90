@@ -3,6 +3,7 @@ program main
   use day02, only: day02_parts_1_and_2
   use day03, only: day03_parts_1_and_2
   use day04, only: day04_parts_1_and_2
+  use day05, only: day05_parts_1_and_2
   implicit none
 
   integer :: num_args, day
@@ -25,6 +26,8 @@ program main
     call day03_parts_1_and_2
   case(4)
     call day04_parts_1_and_2
+  case(5)
+    call day05_parts_1_and_2
   case default
     print *, "Code for day not found"
   end select
