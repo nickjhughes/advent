@@ -9,7 +9,7 @@ My solutions to the [Advent of Code](https://adventofcode.com/) problems, variou
 | 2021 | 50/50      |
 | 2020 | 47/50      |
 | 2019 | 12/50      |
-| 2018 | 8/50       |
+| 2018 | 12/50      |
 | 2017 | 0/50       |
 | 2016 | 4/50       |
 | 2015 | 27/50      |
