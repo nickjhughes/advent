@@ -23,6 +23,12 @@ fn get_input_file_contents() -> String {
     fs::read_to_string("inputs/input23").expect("Failed to open input file")
 }
 
+// (3),8,9,1,2,5,4,6,7,10,..=1_000_000
+// 3,(2),8,9,1,5,4,6,7,10,..=1_000_000
+// 3,4,6,7,2,5,(10),..=1_000_000,8,9,1
+// 3,4,6,7,2,5,10,(14),15..=1_000_000,8,9,11,12,13,1
+// 3,4,6,7,2,5,10,14,(18),19..=1_000_000,8,9,11,12,13,15,16,17,1
+
 #[derive(Debug, PartialEq)]
 struct Game {
     cups: Vec<u32>,
@@ -32,7 +38,7 @@ struct Game {
 }
 
 impl Game {
-    const BIG_GAME_MAX_CUP: u32 = 1_000_000;
+    const BIG_GAME_MAX_CUP: u32 = 30;
 
     fn new(mut cups: Vec<u32>, big_game: bool) -> Self {
         let current_cup = cups[0];
@@ -176,12 +182,12 @@ impl Game {
 
     fn two_cups_after_cup_one(&self) -> (u32, u32) {
         let cup_one_idx = self.cups.iter().position(|cup| *cup == 1).unwrap();
-        let next_idx = if cup_one_idx == self.cups.len() {
+        let next_idx = if cup_one_idx == self.cups.len() - 1 {
             0
         } else {
             cup_one_idx + 1
         };
-        let next_next_idx = if next_idx == self.cups.len() {
+        let next_next_idx = if next_idx == self.cups.len() - 1 {
             0
         } else {
             next_idx + 1
@@ -192,13 +198,34 @@ impl Game {
 
 impl std::fmt::Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for cup in self.cups.iter() {
-            if *cup == self.current_cup {
-                write!(f, "({}) ", cup)?;
-            } else {
-                write!(f, "{}  ", cup)?;
+        let current_cup_idx = self
+            .cups
+            .iter()
+            .position(|c| *c == self.current_cup)
+            .unwrap();
+        let mut i = current_cup_idx;
+        write!(f, "({}) ", self.current_cup)?;
+        i += 1;
+        if i == self.cups.len() {
+            i = 0;
+        }
+
+        while i != current_cup_idx {
+            write!(f, "{}  ", self.cups[i])?;
+
+            i += 1;
+            if i == self.cups.len() {
+                i = 0;
             }
         }
+
+        // for cup in self.cups.iter() {
+        //     if *cup == self.current_cup {
+        //         write!(f, "({}) ", cup)?;
+        //     } else {
+        //         write!(f, "{}  ", cup)?;
+        //     }
+        // }
         Ok(())
     }
 }
@@ -266,4 +293,22 @@ fn test_do_move_big_game() {
         game.do_move();
     }
     assert_eq!(game.two_cups_after_cup_one(), (934001, 159792));
+}
+
+#[test]
+fn medium_game() {
+    let mut game = Game::parse("123456789", true);
+    println!("{}", game);
+
+    game.do_move();
+    loop {
+        game.do_move();
+        if game.current_cup == 1 && game.two_cups_after_cup_one() == (2, 3) {
+            println!("{}", game);
+        }
+    }
+    // while game.current_cup != 1 {
+    //     game.do_move();
+    // }
+    // println!("{}", game);
 }
