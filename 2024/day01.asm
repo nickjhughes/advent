@@ -1,12 +1,10 @@
 .code64
 
 .section .rodata
-input: .ascii "1abc2\npqr3stu8vwx\na1b2c3d4e5f\ntreb7uchet\n"
-.set input_end, .
-.set input_len, (input_end - input)
+filename: .asciz "input01"
 
 .section .data
-output: .ascii "        \n"
+output: .ascii "                                \n"
 .set output_len, (. - output)
 
 .section .text
@@ -14,11 +12,22 @@ output: .ascii "        \n"
 .global _start
 _start:
 
+call open_input_file
+movq %rax, %r15
+# %r15 now contains file descriptor
+call mmap_input_file
+movq %rax, %r14
+movq %rax, %r15
+add $22039, %r15
+# %r14 now contains addr of the memory-mapped input file
+# and %r15 contains the addr of the end of the file
+
 # Initialize sum to 0
 movq $0, %rax
 
 # Start at beginning of input
-lea input, %r11
+movq %r14, %r11
+# lea input, %r11
 
 start_of_line:
   # Reset variables
@@ -58,7 +67,7 @@ next_char:
   # Move to next char
   inc %r11
   # If we're at the end of the input, jump to end_of_input, otherwise continue
-  cmp $input_end, %r11
+  cmp %r15, %r11
   je end_of_input
   jmp char_loop
 
@@ -69,13 +78,12 @@ end_of_line:
   add %r9, %rax
 
   inc %r11
-  cmp $input_end, %r11
+  cmp %r15, %r11
   je end_of_input
   jmp start_of_line
 
 end_of_input:
-  # TODO: Print out sum as answer
-  #       For just print the number of lines
+  # Print out sum as answer
   call write_result_to_output
   call print_output
   jmp exit
@@ -126,9 +134,9 @@ write_digit:
 # Print the string at (output) to stdout
 print_output:
   push %rax
-  push %rdi
   push %rsi
   push %rdi
+  push %rdx
   push %r11
   push %rcx
   movq $1, %rax
@@ -138,10 +146,55 @@ print_output:
   syscall
   pop %rcx
   pop %r11
+  pop %rdx
   pop %rdi
   pop %rsi
-  pop %rdi
   pop %rax
+  ret
+
+open_input_file:
+  push %rdi
+  push %rsi
+  push %rdx
+  push %r11
+  push %rcx
+  movq $2, %rax
+  leaq filename, %rdi
+  movq $0, %rsi # flags = O_RDONLY
+  movq $0, %rdx # mode = ?
+  syscall
+  pop %rcx
+  pop %r11
+  pop %rdx
+  pop %rsi
+  pop %rdi
+  ret
+
+mmap_input_file:
+  push %rdi
+  push %rsi
+  push %rdx
+  push %r10
+  push %r8
+  push %r9
+  push %r11
+  push %rcx
+  movq $9, %rax
+  movq $0, %rdi # address = null
+  movq $22039, %rsi # length = 22039
+  movq $1, %rdx # prot = PROT_READ
+  movq $2, %r10 # flags = MAP_PRIVATE
+  movq %r15, %r8 # fd = result from open syscall
+  movq $0, %r9 # offset = 0
+  syscall
+  pop %rcx
+  pop %r11
+  pop %r9
+  pop %r8
+  pop %r10
+  pop %rdx
+  pop %rsi
+  pop %rdi
   ret
 
 exit:
