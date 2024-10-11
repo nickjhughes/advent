@@ -2,6 +2,8 @@
 
 .section .rodata
 filename: .asciz "input01"
+input_file_open_error: .ascii "Failed to open input file\n"
+.set input_file_open_error_len, (. - input_file_open_error)
 
 .section .data
 output: .ascii "                                \n"
@@ -40,17 +42,17 @@ char_loop:
   # Load char into register
   movb (%r11), %cl
   movb %cl, (output)
-  
+
   # Check if char is a newline, and if so jump to end_of_line
   cmp $10, %cl
   je end_of_line
-  
+
   # If < '0' or > '9', skip
   cmp $48, %cl
   jl next_char
   cmp $57, %cl
   jg next_char
-  
+
   # Char is a digit, so convert from ASCII by subtracting $48
   sub $48, %cl
 
@@ -85,7 +87,9 @@ end_of_line:
 end_of_input:
   # Print out sum as answer
   call write_result_to_output
-  call print_output
+  lea output, %rsi
+  movq $output_len, %rdx
+  call print
   jmp exit
 
 # Write the number stored in %rax as an ASCII string into (output)
@@ -131,24 +135,18 @@ write_digit:
   pop %rax
   ret
 
-# Print the string at (output) to stdout
-print_output:
+# Print the string at (%rsi) with length %rdx to stdout
+print:
   push %rax
-  push %rsi
   push %rdi
-  push %rdx
   push %r11
   push %rcx
   movq $1, %rax
   movq $1, %rdi
-  leaq output, %rsi
-  movq $output_len, %rdx
   syscall
   pop %rcx
   pop %r11
-  pop %rdx
   pop %rdi
-  pop %rsi
   pop %rax
   ret
 
@@ -161,13 +159,22 @@ open_input_file:
   movq $2, %rax
   leaq filename, %rdi
   movq $0, %rsi # flags = O_RDONLY
-  movq $0, %rdx # mode = ?
   syscall
   pop %rcx
   pop %r11
   pop %rdx
   pop %rsi
   pop %rdi
+
+  # If open failed, print error and exit
+  cmp $0, %rax
+  jge open_input_file_success
+  lea input_file_open_error, %rsi
+  movq $input_file_open_error_len, %rdx
+  call print
+  jmp exit
+
+open_input_file_success:
   ret
 
 mmap_input_file:
@@ -199,5 +206,5 @@ mmap_input_file:
 
 exit:
   mov $60, %rax
-  mov $0, %rdi 
+  mov $0, %rdi
   syscall
