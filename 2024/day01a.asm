@@ -19,29 +19,30 @@ movq %rax, %r15
 # %r15 now contains file descriptor
 call mmap_input_file
 movq %rax, %r14
-movq %rax, %r15
-add $22039, %r15
 # %r14 now contains addr of the memory-mapped input file
-# and %r15 contains the addr of the end of the file
+# we detect the end of the file by looking for a null byte
 
 # Initialize sum to 0
-movq $0, %rax
+xor %rax, %rax
 
 # Start at beginning of input
 movq %r14, %r11
-# lea input, %r11
 
 start_of_line:
   # Reset variables
-  movq $0, %r8  # Whether we've seen the first digit
-  movq $0, %r9  # The first digit
-  movq $0, %r10 # The last digit
+  xor %r8, %r8   # Whether we've seen the first digit
+  xor %r9, %r9   # The first digit
+  xor %r10, %r10 # The last digit
 
 # Loop over each character
 char_loop:
   # Load char into register
   movb (%r11), %cl
   movb %cl, (output)
+
+  # Check if char is null, meaning we've reached end of file
+  cmp $0, %cl
+  je end_of_input
 
   # Check if char is a newline, and if so jump to end_of_line
   cmp $10, %cl
@@ -68,9 +69,6 @@ not_first_digit:
 next_char:
   # Move to next char
   inc %r11
-  # If we're at the end of the input, jump to end_of_input, otherwise continue
-  cmp %r15, %r11
-  je end_of_input
   jmp char_loop
 
 end_of_line:
@@ -79,9 +77,8 @@ end_of_line:
   add %r10, %r9
   add %r9, %rax
 
+  # Move to next char
   inc %r11
-  cmp %r15, %r11
-  je end_of_input
   jmp start_of_line
 
 end_of_input:
@@ -103,11 +100,11 @@ write_result_to_output:
   push %rax
 
   # First determine the number of decimal digits in the number, stored in %r8
-  movq $0, %r8
+  xor %r8, %r8
   movq $10, %rcx
 count_digit:
   inc %r8
-  movq $0, %rdx
+  xor %rdx, %rdx
   divq %rcx
   cmp $0, %rax
   jne count_digit
@@ -121,7 +118,7 @@ write_digit_start:
   add %r8, %rdi
 write_digit:
   decq %rdi
-  movq $0, %rdx
+  xor %rdx, %rdx
   divq %rcx
   add $48, %rdx
   movb %dl, (%rdi)
@@ -188,7 +185,7 @@ mmap_input_file:
   push %rcx
   movq $9, %rax
   movq $0, %rdi # address = null
-  movq $22039, %rsi # length = 22039
+  movq $409600, %rsi # map 100 pages (assuming 4096 byte pages)
   movq $1, %rdx # prot = PROT_READ
   movq $2, %r10 # flags = MAP_PRIVATE
   movq %r15, %r8 # fd = result from open syscall
