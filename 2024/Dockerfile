@@ -10,7 +10,4 @@ COPY . .
 RUN as -gstabs -g day${DAY}.asm -o day${DAY}.o
 RUN ld day${DAY}.o -o day${DAY}
 
-# Debug:
-# ENTRYPOINT gdb ./day${DAY}
-# Run:
 ENTRYPOINT ./day${DAY}
