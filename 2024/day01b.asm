@@ -1,23 +1,27 @@
 .code64
 
 .section .rodata
-filename: .asciz "input01_test_b"
+filename: .asciz "input01"
 input_file_open_error: .ascii "Failed to open input file\n"
 .set input_file_open_error_len, (. - input_file_open_error)
 
-one: .asciz "one"
-two: .asciz "two"
+newline_debug: .ascii "Newline\n";
+.set newline_debug_len, (. - newline_debug)
+
+one: .asciz "one\0\0"
+two: .asciz "two\0\0"
 three: .asciz "three"
-four: .asciz "four"
-five: .asciz "five"
-six: .asciz "six"
+four: .asciz "four\0"
+five: .asciz "five\0"
+six: .asciz "six\0\0"
 seven: .asciz "seven"
 eight: .asciz "eight"
-nine: .asciz "nine"
+nine: .asciz "nine\0"
 
 .section .data
 output: .ascii "                                \n"
 .set output_len, (. - output)
+.set output_end, (output + output_len - 1)
 
 .section .text
 
@@ -59,8 +63,8 @@ char_loop:
   je end_of_line
 
   # Check if this is the start of a spelled-out number
-  # If so, this will move %r11 to the end of the number,
-  # and store the digit itself in %cl
+  # If so, this will store ethe number as an ASCII digit in %cl
+  # (so the following code can be the same as if it were an ASCII digit)
   call check_number
 
   # If < '0' or > '9', skip
@@ -84,9 +88,6 @@ not_first_digit:
 next_char:
   # Move to next char
   inc %r11
-  # If we're at the end of the input, jump to end_of_input, otherwise continue
-  # cmp %r15, %r11
-  # je end_of_input
   jmp char_loop
 
 end_of_line:
@@ -96,8 +97,6 @@ end_of_line:
   add %r9, %rax
 
   inc %r11
-  # cmp %r15, %r11
-  # je end_of_input
   jmp start_of_line
 
 end_of_input:
@@ -114,7 +113,6 @@ check_number:
   cmp $1, %r15
   jne check_two
   movb $49, %cl
-  add $3, %r11
   ret
 check_two:
   lea two, %rdi
@@ -122,71 +120,63 @@ check_two:
   cmp $1, %r15
   jne check_three
   movb $50, %cl
-  add $3, %r11
   ret
 check_three:
-  lea two, %rdi
+  lea three, %rdi
   call match_string
   cmp $1, %r15
   jne check_four
   movb $51, %cl
-  add $5, %r11
   ret
 check_four:
-  lea two, %rdi
+  lea four, %rdi
   call match_string
   cmp $1, %r15
   jne check_five
   movb $52, %cl
-  add $4, %r11
   ret
 check_five:
-  lea two, %rdi
+  lea five, %rdi
   call match_string
   cmp $1, %r15
   jne check_six
   movb $53, %cl
-  add $4, %r11
   ret
 check_six:
-  lea two, %rdi
+  lea six, %rdi
   call match_string
   cmp $1, %r15
   jne check_seven
   movb $54, %cl
-  add $3, %r11
   ret
 check_seven:
-  lea two, %rdi
+  lea seven, %rdi
   call match_string
   cmp $1, %r15
   jne check_eight
   movb $55, %cl
-  add $5, %r11
   ret
 check_eight:
-  lea two, %rdi
+  lea eight, %rdi
   call match_string
   cmp $1, %r15
   jne check_nine
   movb $56, %cl
-  add $5, %r11
   ret
 check_nine:
-  lea two, %rdi
+  lea nine, %rdi
   call match_string
   cmp $1, %r15
   jne check_done
   movb $57, %cl
-  add $4, %r11
 check_done:
   ret
 
 # Compare the bytes starting at %r11 with the null-terminated string pointed to by %rdi
 # If true, set %r15 to 1, otherwise 0
 match_string:
-  push %rcx
   push %rdx
+  push %rcx
   push %r11
   push %rdi
 
@@ -216,6 +206,20 @@ match_string_end:
   pop %r11
   pop %rcx
   pop %rdx
+  ret
+
+clear_output:
+  push %rdi
+  push %rax
+  lea output, %rdi
+  movb $32, %al
+clear_output_loop:
+  movb %al, (%rdi)
+  inc %rdi
+  cmp $output_end, %rdi
+  jne clear_output_loop
+  pop %rax
+  pop %rdi
   ret
 
 # Write the number stored in %rax as an ASCII string into (output)
