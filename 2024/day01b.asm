@@ -28,13 +28,11 @@ output: .ascii "                                \n"
 .global _start
 _start:
 
+# Open and mmap null-terminated input file to address (%r14)
 call open_input_file
-movq %rax, %r15
-# %r15 now contains file descriptor
+movq %rax, %rdi
 call mmap_input_file
 movq %rax, %r14
-# %r14 now contains addr of the memory-mapped input file
-# we detect the end of the file by looking for a null byte
 
 # Initialize sum to 0
 xor %rax, %rax
@@ -102,8 +100,8 @@ end_of_line:
 end_of_input:
   # Print out sum as answer
   call write_result_to_output
-  lea output, %rsi
-  movq $output_len, %rdx
+  lea output, %rdi
+  movq $output_len, %rsi
   call print
   jmp exit
 
@@ -265,77 +263,4 @@ write_digit:
   pop %rax
   ret
 
-# Print the string at (%rsi) with length %rdx to stdout
-print:
-  push %rax
-  push %rdi
-  push %r11
-  push %rcx
-  movq $1, %rax
-  movq $1, %rdi
-  syscall
-  pop %rcx
-  pop %r11
-  pop %rdi
-  pop %rax
-  ret
-
-open_input_file:
-  push %rdi
-  push %rsi
-  push %rdx
-  push %r11
-  push %rcx
-  movq $2, %rax
-  leaq filename, %rdi
-  movq $0, %rsi # flags = O_RDONLY
-  syscall
-  pop %rcx
-  pop %r11
-  pop %rdx
-  pop %rsi
-  pop %rdi
-
-  # If open failed, print error and exit
-  cmp $0, %rax
-  jge open_input_file_success
-  lea input_file_open_error, %rsi
-  movq $input_file_open_error_len, %rdx
-  call print
-  jmp exit
-
-open_input_file_success:
-  ret
-
-mmap_input_file:
-  push %rdi
-  push %rsi
-  push %rdx
-  push %r10
-  push %r8
-  push %r9
-  push %r11
-  push %rcx
-  movq $9, %rax
-  movq $0, %rdi # address = null
-  movq $409600, %rsi # map 100 pages (assuming 4096 byte pages)
-  # movq $22039, %rsi # length = 22039
-  movq $1, %rdx # prot = PROT_READ
-  movq $2, %r10 # flags = MAP_PRIVATE
-  movq %r15, %r8 # fd = result from open syscall
-  movq $0, %r9 # offset = 0
-  syscall
-  pop %rcx
-  pop %r11
-  pop %r9
-  pop %r8
-  pop %r10
-  pop %rdx
-  pop %rsi
-  pop %rdi
-  ret
-
-exit:
-  mov $60, %rax
-  mov $0, %rdi
-  syscall
+.include "syscalls.asm"
