@@ -38,7 +38,6 @@ start_of_line:
 char_loop:
   # Load char into register
   movb (%r11), %cl
-  movb %cl, (output)
 
   # Check if char is null, meaning we've reached end of file
   cmp $0, %cl
