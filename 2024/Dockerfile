@@ -1,9 +1,9 @@
 FROM alpine:3.20.3 AS builder
 
+RUN apk add --no-cache gcc gdb
+
 ARG DAY="01"
 ENV DAY=${DAY}
-
-RUN apk add --no-cache gcc gdb
 
 COPY . .
 
