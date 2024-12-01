@@ -20,16 +20,12 @@ movq %rax, %rdi
 call mmap_input_file
 movq %rax, %r14
 
-# Need to parse each line, converting each number into a u32, and storing them
-# in two arrays. Then sort each array. Then iterate through them together to
-# sum up the differences.
-
 # Allocate memory (at %r13) to store arrays of input numbers
 call mmap_memory
 movq %rax, %r13
 
 # Store second array starting at %r12
-add $2000, %rax
+add $4000, %rax
 movq %rax, %r12
 
 # Start at beginning of input
@@ -44,9 +40,12 @@ start_of_line:
 
 # Parse each number
 parse_number:
+  xor %r10, %r10 # Digit index
+
   # Store the number in %rax, so zero it out
   xor %rax, %rax
 
+digit_loop:
   # Load char into register
   xor %rcx, %rcx
   movb (%r11), %cl
@@ -59,19 +58,31 @@ parse_number:
   # Convert from ASCII by subtracting $48
   sub $48, %cl
 
-  mov %rcx, %rax
-  call write_result_to_output
-  lea output, %rdi
-  movq $output_len, %rsi
-  call print
+  # Multiply/divide by 10 as appropriate for digit position
+  mov $4, %r15
+  sub %r10, %r15
+mult_loop:
+  cmp $0, %r15
+  je mult_loop_done
+  imul $10, %ecx
+  dec %r15
+  jmp mult_loop
+
+mult_loop_done:
+  # Add to total
+  add %ecx, %eax
+
+  inc %r10
+  cmp $5, %r10
+  jne digit_loop
 
   # Store in array
   cmp $0, %r8
   jne store_second
-  movl %ecx, (%r13,%r9,4)
+  movl %eax, (%r13,%r9,4)
   jmp finished_number
 store_second:
-  movl %ecx, (%r12,%r9,4)
+  movl %eax, (%r12,%r9,4)
 
 finished_number:
   # Move to next line if this was the second number
