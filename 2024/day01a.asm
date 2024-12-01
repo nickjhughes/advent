@@ -20,71 +20,170 @@ movq %rax, %rdi
 call mmap_input_file
 movq %rax, %r14
 
-# Initialize sum to 0
-xor %rax, %rax
+# Need to parse each line, converting each number into a u32, and storing them
+# in two arrays. Then sort each array. Then iterate through them together to
+# sum up the differences.
+
+# Allocate memory (at %r13) to store arrays of input numbers
+call mmap_memory
+movq %rax, %r13
+
+# Store second array starting at %r12
+add $2000, %rax
+movq %rax, %r12
 
 # Start at beginning of input
 movq %r14, %r11
 
+# The count of lines we've parsed
+xor %r9, %r9
+
 start_of_line:
-  # Reset variables
-  xor %r8, %r8   # Whether we've seen the first digit
-  xor %r9, %r9   # The first digit
-  xor %r10, %r10 # The last digit
+  # Index of the number we're parsing (0 or 1)
+  xor %r8, %r8
 
-# Loop over each character
-char_loop:
+# Parse each number
+parse_number:
+  # Store the number in %rax, so zero it out
+  xor %rax, %rax
+
   # Load char into register
+  xor %rcx, %rcx
   movb (%r11), %cl
-
+  inc %r11
+  
   # Check if char is null, meaning we've reached end of file
   cmp $0, %cl
   je end_of_input
 
-  # Check if char is a newline, and if so jump to end_of_line
-  cmp $10, %cl
-  je end_of_line
-
-  # If < '0' or > '9', skip
-  cmp $48, %cl
-  jl next_char
-  cmp $57, %cl
-  jg next_char
-
-  # Char is a digit, so convert from ASCII by subtracting $48
+  # Convert from ASCII by subtracting $48
   sub $48, %cl
 
-  # If we haven't seen the first digit on this line, this must be it
-  cmp $1, %r8
-  je not_first_digit
-  movq $1, %r8
-  movb %cl, %r9b
-not_first_digit:
-  # Store all digits in other slot, so value at the end of the line will be the last one
-  movb %cl, %r10b
-
-next_char:
-  # Move to next char
-  inc %r11
-  jmp char_loop
-
-end_of_line:
-  # Construct number from the two digits and add to running sum
-  imul $10, %r9
-  add %r10, %r9
-  add %r9, %rax
-
-  # Move to next char
-  inc %r11
-  jmp start_of_line
-
-end_of_input:
-  # Print out sum as answer
+  mov %rcx, %rax
   call write_result_to_output
   lea output, %rdi
   movq $output_len, %rsi
   call print
+
+  # Store in array
+  cmp $0, %r8
+  jne store_second
+  movl %ecx, (%r13,%r9,4)
+  jmp finished_number
+store_second:
+  movl %ecx, (%r12,%r9,4)
+
+finished_number:
+  # Move to next line if this was the second number
+  cmp $0, %r8
+  je next_number
+  inc %r11 # Skip newline char
+  inc %r9
+  jmp start_of_line
+
+next_number:
+  # Skip to next number on line
+  add $3, %r11
+  inc %r8
+  jmp parse_number
+
+end_of_input:
+  # We now have both sets of numbers loaded into u32 arrays with %r9 elements at %r13 and %r12
+  
+  # Sort both arrays
+  mov %r13, %rax
+  call bubble_sort
+  mov %r12, %rax
+  call bubble_sort
+
+  # Now iterate through them together, adding up their absolute differences
+  # Store result in %rax
+  xor %rax, %rax
+
+  push %rdi
+  push %rcx
+  push %rdx
+  push %rbx
+
+  # Index into arrays
+  xor %rdi, %rdi
+
+sum_loop:
+  # Load each number into registers
+  movl (%r13,%rdi,4), %ecx
+  movl (%r12,%rdi,4), %edx
+
+  # Calculate difference of values
+  sub %edx, %ecx
+
+  # Calculate absolute value of difference abs(%ecx)
+  mov %ecx, %edx
+  neg %ecx
+  cmovl %edx, %ecx
+
+  # Add result to %rax
+  add %rcx, %rax
+
+  inc %rdi
+  cmp %rdi, %r9
+  jne sum_loop
+
+  pop %rbx
+  pop %rdx
+  pop %rcx
+  pop %rdi
+
+  # Print result
+  call write_result_to_output
+  lea output, %rdi
+  movq $output_len, %rsi
+  call print
+
   jmp exit
+
+# Sort the %r9 length u32 array at address %rax
+bubble_sort:
+  push %r9
+  push %r8
+  push %rdi
+  push %rcx
+  push %rdx
+
+  dec %r9
+
+bubble_sort_repeat:
+  xor %r8, %r8   # Number of swaps this loop
+  xor %rdi, %rdi # Loop index
+
+bubble_sort_loop:
+  # Load element %rdi and %rdi+1 into registers
+  movl (%rax,%rdi,4), %ecx
+  inc %rdi
+  movl (%rax,%rdi,4), %edx
+
+  # Compare and swap if necessary
+  cmp %edx, %ecx
+  jle bubble_sort_next
+  movl %ecx, (%rax,%rdi,4)
+  dec %rdi
+  movl %edx, (%rax,%rdi,4)
+  inc %rdi
+  inc %r8
+
+bubble_sort_next:
+  cmp %rdi, %r9
+  jne bubble_sort_loop
+  
+  # If any swaps occurred, repeat the loop
+  cmp $0, %r8
+  jne bubble_sort_repeat
+
+  pop %rdx
+  pop %rcx
+  pop %rdi
+  pop %r8
+  pop %r9
+  ret
 
 # Write the number stored in %rax as an ASCII string into (output)
 write_result_to_output:
@@ -124,8 +223,8 @@ write_digit:
 
   pop %r8
   pop %rdi
-  pop %rdx
   pop %rcx
+  pop %rdx
   pop %rax
   ret
 
