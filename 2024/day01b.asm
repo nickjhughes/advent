@@ -5,23 +5,9 @@ filename: .asciz "input01"
 input_file_open_error: .ascii "Failed to open input file\n"
 .set input_file_open_error_len, (. - input_file_open_error)
 
-newline_debug: .ascii "Newline\n";
-.set newline_debug_len, (. - newline_debug)
-
-one: .asciz "one\0\0"
-two: .asciz "two\0\0"
-three: .asciz "three"
-four: .asciz "four\0"
-five: .asciz "five\0"
-six: .asciz "six\0\0"
-seven: .asciz "seven"
-eight: .asciz "eight"
-nine: .asciz "nine\0"
-
 .section .data
 output: .ascii "                                \n"
 .set output_len, (. - output)
-.set output_end, (output + output_len - 1)
 
 .section .text
 
@@ -34,190 +20,175 @@ movq %rax, %rdi
 call mmap_input_file
 movq %rax, %r14
 
-# Initialize sum to 0
-xor %rax, %rax
+# Allocate memory (at %r13) to store arrays of input numbers
+call mmap_memory
+movq %rax, %r13
+
+# Store second array starting at %r12
+add $4000, %rax
+movq %rax, %r12
 
 # Start at beginning of input
 movq %r14, %r11
 
+# The count of lines we've parsed
+xor %r9, %r9
+
 start_of_line:
-  # Reset variables
-  xor %r8, %r8   # Whether we've seen the first digit
-  xor %r9, %r9   # The first digit
-  xor %r10, %r10 # The last digit
+  # Index of the number we're parsing (0 or 1)
+  xor %r8, %r8
 
-# Loop over each character
-char_loop:
+# Parse each number
+parse_number:
+  xor %r10, %r10 # Digit index
+
+  # Store the number in %rax, so zero it out
+  xor %rax, %rax
+
+digit_loop:
   # Load char into register
+  xor %rcx, %rcx
   movb (%r11), %cl
-  movb %cl, (output)
-
+  inc %r11
+  
   # Check if char is null, meaning we've reached end of file
   cmp $0, %cl
   je end_of_input
 
-  # Check if char is a newline, and if so jump to end_of_line
-  cmp $10, %cl
-  je end_of_line
-
-  # Check if this is the start of a spelled-out number
-  # If so, this will store ethe number as an ASCII digit in %cl
-  # (so the following code can be the same as if it were an ASCII digit)
-  call check_number
-
-  # If < '0' or > '9', skip
-  cmp $48, %cl
-  jl next_char
-  cmp $57, %cl
-  jg next_char
-
-  # Char is a digit, so convert from ASCII by subtracting $48
+  # Convert from ASCII by subtracting $48
   sub $48, %cl
 
-  # If we haven't seen the first digit on this line, this must be it
-  cmp $1, %r8
-  je not_first_digit
-  movq $1, %r8
-  movb %cl, %r9b
-not_first_digit:
-  # Store all digits in other slot, so value at the end of the line will be the last one
-  movb %cl, %r10b
+  # Multiply/divide by 10 as appropriate for digit position
+  mov $4, %r15
+  sub %r10, %r15
+mult_loop:
+  cmp $0, %r15
+  je mult_loop_done
+  imul $10, %ecx
+  dec %r15
+  jmp mult_loop
 
-next_char:
-  # Move to next char
-  inc %r11
-  jmp char_loop
+mult_loop_done:
+  # Add to total
+  add %ecx, %eax
 
-end_of_line:
-  # Construct number from the two digits and add to running sum
-  imul $10, %r9
-  add %r10, %r9
-  add %r9, %rax
+  inc %r10
+  cmp $5, %r10
+  jne digit_loop
 
-  inc %r11
+  # Store in array
+  cmp $0, %r8
+  jne store_second
+  movl %eax, (%r13,%r9,4)
+  jmp finished_number
+store_second:
+  movl %eax, (%r12,%r9,4)
+
+finished_number:
+  # Move to next line if this was the second number
+  cmp $0, %r8
+  je next_number
+  inc %r11 # Skip newline char
+  inc %r9
   jmp start_of_line
 
+next_number:
+  # Skip to next number on line
+  add $3, %r11
+  inc %r8
+  jmp parse_number
+
 end_of_input:
-  # Print out sum as answer
+  # Store result in %rax
+  xor %rax, %rax
+
+  push %r10
+  push %rdi
+  push %rsi
+  push %rcx
+  push %rdx
+
+  xor %rdi, %rdi # Index into first array
+
+similarity_loop:
+  xor %rcx, %rcx
+  movl (%r13,%rdi,4), %ecx # Load first array value in %ecx
+
+  xor %rsi, %rsi # Index into second array
+  xor %r10, %r10 # Count in second array
+count_loop:
+  movl (%r12,%rsi,4), %edx
+  cmp %edx, %ecx
+  jne count_loop_continue
+  inc %r10
+count_loop_continue:
+  inc %rsi
+  cmp %r9, %rsi
+  jne count_loop
+
+  imul %r10, %rcx
+  add %rcx, %rax
+
+  inc %rdi
+  cmp %r9, %rdi
+  jne similarity_loop
+
+  pop %rdx
+  pop %rcx
+  pop %rsi
+  pop %rdi
+  pop %r10
+
+  # Print result
   call write_result_to_output
   lea output, %rdi
   movq $output_len, %rsi
   call print
+
   jmp exit
 
-check_number:
-  lea one, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_two
-  movb $49, %cl
-  ret
-check_two:
-  lea two, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_three
-  movb $50, %cl
-  ret
-check_three:
-  lea three, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_four
-  movb $51, %cl
-  ret
-check_four:
-  lea four, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_five
-  movb $52, %cl
-  ret
-check_five:
-  lea five, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_six
-  movb $53, %cl
-  ret
-check_six:
-  lea six, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_seven
-  movb $54, %cl
-  ret
-check_seven:
-  lea seven, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_eight
-  movb $55, %cl
-  ret
-check_eight:
-  lea eight, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_nine
-  movb $56, %cl
-  ret
-check_nine:
-  lea nine, %rdi
-  call match_string
-  cmp $1, %r15
-  jne check_done
-  movb $57, %cl
-check_done:
-  ret
-
-# Compare the bytes starting at %r11 with the null-terminated string pointed to by %rdi
-# If true, set %r15 to 1, otherwise 0
-match_string:
-  push %rdx
+# Sort the %r9 length u32 array at address %rax
+bubble_sort:
+  push %r9
+  push %r8
+  push %rdi
   push %rcx
-  push %r11
-  push %rdi
+  push %rdx
 
-  xor %r15, %r15
+  dec %r9
 
-match_string_loop:
-  movb (%r11), %cl
-  movb (%rdi), %dl
-  # If we've reached the end of the string, then we've matched
-  cmp $0, %dl
-  je match_string_match
-  # If we've reacthed the end of the input, then we're done
-  cmp $0, %cl
-  je match_string_end
-  # Otherwise, compare and end if not equal, or continue if equal
-  cmp %dl, %cl
-  jne match_string_end
+bubble_sort_repeat:
+  xor %r8, %r8   # Number of swaps this loop
+  xor %rdi, %rdi # Loop index
+
+bubble_sort_loop:
+  # Load element %rdi and %rdi+1 into registers
+  movl (%rax,%rdi,4), %ecx
   inc %rdi
-  inc %r11
-  jmp match_string_loop
+  movl (%rax,%rdi,4), %edx
 
-match_string_match:
-  movq $1, %r15
+  # Compare and swap if necessary
+  cmp %edx, %ecx
+  jle bubble_sort_next
+  movl %ecx, (%rax,%rdi,4)
+  dec %rdi
+  movl %edx, (%rax,%rdi,4)
+  inc %rdi
+  inc %r8
 
-match_string_end:
-  pop %rdi
-  pop %r11
-  pop %rcx
+bubble_sort_next:
+  cmp %rdi, %r9
+  jne bubble_sort_loop
+  
+  # If any swaps occurred, repeat the loop
+  cmp $0, %r8
+  jne bubble_sort_repeat
+
   pop %rdx
-  ret
-
-clear_output:
-  push %rdi
-  push %rax
-  lea output, %rdi
-  movb $32, %al
-clear_output_loop:
-  movb %al, (%rdi)
-  inc %rdi
-  cmp $output_end, %rdi
-  jne clear_output_loop
-  pop %rax
+  pop %rcx
   pop %rdi
+  pop %r8
+  pop %r9
   ret
 
 # Write the number stored in %rax as an ASCII string into (output)
@@ -258,8 +229,8 @@ write_digit:
 
   pop %r8
   pop %rdi
-  pop %rdx
   pop %rcx
+  pop %rdx
   pop %rax
   ret
 
