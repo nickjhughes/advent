@@ -190,7 +190,14 @@ load_b:
   # Skip check if we're on the first pair
   cmp $1, %r8
   je finished_compare2
+  # Also skip check if we're on the second pair after skipping the first number
+  # In which case, %r8 = 2, and %r14 = 0
+  cmp $0, %r14
+  jne skip_skip
+  cmp $2, %r8
+  je finished_compare2
 
+skip_skip:
   cmp %rdx, %r15
   jne removal_loop
 
