@@ -1,0 +1,21 @@
+FROM debian:bookworm AS builder
+
+RUN apt update -y && apt upgrade -y
+RUN apt install -y gcc gdb git tmux python3
+
+EXPOSE 5550-5550
+ARG GDBFRONTEND_BIND_ADDRESS=0.0.0.0
+
+RUN git clone https://github.com/rohanrhu/gdb-frontend.git
+
+ARG DAY="01"
+ENV DAY=${DAY}
+
+COPY . .
+
+RUN as -gstabs -g day${DAY}.asm -o day${DAY}.o
+RUN ld day${DAY}.o -o day${DAY}
+
+RUN echo "set auto-load safe-path /" > ./.gdbinit
+
+CMD ./gdb-frontend/gdbfrontend -w / -l "$GDBFRONTEND_BIND_ADDRESS" -G "./day${DAY}"
