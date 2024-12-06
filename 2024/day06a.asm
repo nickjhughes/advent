@@ -52,7 +52,7 @@ parse_char:
   jmp parse_char
 
 parse_pos:
-  # TODO: Store the current index for later, as the position of the guard
+  mov %r10, %r15 # Guard position index
 
   movb $88, (%r13,%r10,1) # 'X'
   inc %r10
@@ -64,11 +64,184 @@ end_of_line:
   jmp parse_char
 
 end_of_input:
-  # TODO: Guard starts facing north, store direction in a register
+  mov %r15, %r10 # Index of guard
+  # Directions: North = 0, East = 1, South = 2, West = 3
+  mov $0, %r14 # Direction of guard
 
-  # TODO: Move the guard through the map, leaving 'X' where they've been
+# Move the guard through the map, leaving 'X' where they've been
+move_guard:
+  cmp $0, %r14
+  je move_north
+  cmp $1, %r14
+  je move_east
+  cmp $2, %r14
+  je move_south
+  cmp $3, %r14
+  je move_west
 
-  # TODO: When they leave the map, count the 'X's in the map as the answer
+move_north:
+  # Store current (row,col) in (%r11,%r12)
+  # Calculate row/col from index %r10 by dividing by %r9
+  # idiv divides %rdx:%rax, so clear %rdx and move %r10 to %rax
+  push %rax
+  xor %rdx, %rdx
+  mov %r10, %rax
+  idiv %r9
+  mov %rax, %r11 # row (quotient of division)
+  mov %rdx, %r12 # col (remainder of division)
+  pop %rax
+
+  # Move north
+  dec %r11
+  mov %r10, %r15 # Potential new index
+  sub %r9, %r15
+
+  # Bound check
+  cmp %r9, %r11
+  jge left_map
+  cmp $0, %r11
+  jl left_map
+
+  # Check for obstacle
+  xor %rcx, %rcx
+  movb (%r13,%r15,1), %cl
+  cmp $35, %cl # '#'
+  jne do_move_north
+  # Rotate clockwise
+  inc %r14
+  jmp move_guard
+
+do_move_north:
+  sub %r9, %r10 # Actually do move
+  movb $88, (%r13,%r10,1) # Leave an 'X' everywhere we go
+  jmp move_guard
+
+move_east:
+  # Store current (row,col) in (%r11,%r12)
+  push %rax
+  xor %rdx, %rdx
+  mov %r10, %rax
+  idiv %r9
+  mov %rax, %r11 # row (quotient of division)
+  mov %rdx, %r12 # col (remainder of division)
+  pop %rax
+
+  # Move east
+  inc %r12
+  mov %r10, %r15 # Potential new index
+  inc %r15
+
+  # Bound check
+  cmp %r9, %r12
+  jge left_map
+  cmp $0, %r12
+  jl left_map
+
+  # Check for obstacle
+  xor %rcx, %rcx
+  movb (%r13,%r15,1), %cl
+  cmp $35, %cl # '#'
+  jne do_move_east
+  # Rotate clockwise
+  inc %r14
+  jmp move_guard
+
+do_move_east:
+  inc %r10 # Actually do move
+  movb $88, (%r13,%r10,1) # Leave an 'X' everywhere we go
+  jmp move_guard
+
+move_south:
+  # Store current (row,col) in (%r11,%r12)
+  push %rax
+  xor %rdx, %rdx
+  mov %r10, %rax
+  idiv %r9
+  mov %rax, %r11 # row (quotient of division)
+  mov %rdx, %r12 # col (remainder of division)
+  pop %rax
+
+  # Move south
+  inc %r11
+  mov %r10, %r15 # Potential new index
+  add %r9, %r15
+
+  # Bound check
+  cmp %r9, %r11
+  jge left_map
+  cmp $0, %r11
+  jl left_map
+
+  # Check for obstacle
+  xor %rcx, %rcx
+  movb (%r13,%r15,1), %cl
+  cmp $35, %cl # '#'
+  jne do_move_south
+  # Rotate clockwise
+  inc %r14
+  jmp move_guard
+
+do_move_south:
+  add %r9, %r10 # Actually do move
+  movb $88, (%r13,%r10,1) # Leave an 'X' everywhere we go
+  jmp move_guard
+
+move_west:
+  # Store current (row,col) in (%r11,%r12)
+  push %rax
+  xor %rdx, %rdx
+  mov %r10, %rax
+  idiv %r9
+  mov %rax, %r11 # row (quotient of division)
+  mov %rdx, %r12 # col (remainder of division)
+  pop %rax
+
+  # Move east
+  dec %r12
+  mov %r10, %r15 # Potential new index
+  dec %r15
+
+  # Bound check
+  cmp %r9, %r12
+  jge left_map
+  cmp $0, %r12
+  jl left_map
+
+  # Check for obstacle
+  xor %rcx, %rcx
+  movb (%r13,%r15,1), %cl
+  cmp $35, %cl # '#'
+  jne do_move_west
+  # Rotate clockwise
+  xor %r14, %r14
+  jmp move_guard
+
+do_move_west:
+  dec %r10 # Actually do move
+  movb $88, (%r13,%r10,1) # Leave an 'X' everywhere we go
+  jmp move_guard
+
+# Answer is the number of 'X's left in the map
+left_map:
+  imul %r9, %r9
+  xor %r10, %r10
+  xor %rax, %rax
+  xor %rcx, %rcx
+count_x:
+  movb (%r13,%r10,1), %cl
+  inc %r10
+  cmp $88, %cl # 'X'
+  jne next
+  inc %rax
+
+next:
+  cmp %r10, %r9
+  jne count_x
+
+  # Print result
+  call write_result_to_output
+  lea output, %rdi
+  call print
 
   jmp exit
 
