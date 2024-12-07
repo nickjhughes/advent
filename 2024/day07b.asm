@@ -63,8 +63,8 @@ analyse_numbers:
   shl %cl, %r8
 
   # We'll store the operations for each gap as pairs of bits in a binary number,
-  # where 00 = +, 01 = *, 10 = ||, and 11 = + (repeat for ease). Incrementing the
-  # number gives a new combination of operations to try, and we stop when we hit %r8.
+  # where 00 = +, 01 = *, 10 = ||, and 11 = NOP. Incrementing the number gives a new combination
+  # of operations to try, and we stop when we hit %r8.
   xor %r10, %r10 # Current operations combo (start as all +'s)
 combo_loop:
   xor %rbx, %rbx # Array index
@@ -87,6 +87,8 @@ number_loop:
   je do_mul
   cmp $2, %r10
   je do_concat
+  pop %r10
+  jmp next_combo # Skip entirely if any option is the 4th NOP
 do_add:
   add %r12, %rax
   jmp pop
@@ -126,12 +128,17 @@ pop:
   cmp %rbx, %r9
   jne number_loop
 
+  # If larger than result, we can bail
+  cmp %rbx, %r15
+  jl next_combo
+
   # Check if result is equal to the required answer
   cmp %r15, %rax
   je success
 
   cmp %r10, %r8
   je parse_answer # We failed to find a solution, so move on to next line
+next_combo:
   inc %r10 # Next combination of operations
   jmp combo_loop
 
