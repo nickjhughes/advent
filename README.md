@@ -4,7 +4,7 @@ My solutions to the [Advent of Code](https://adventofcode.com/) problems, variou
 
 | Year | Completion |
 | ---- | ---------- |
-| 2024 | 16/50      |
+| 2024 | 22/50      |
 | 2023 | 50/50      |
 | 2022 | 50/50      |
 | 2021 | 50/50      |
