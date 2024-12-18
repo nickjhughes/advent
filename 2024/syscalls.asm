@@ -90,7 +90,7 @@ mmap_memory:
   movq $9, %rax     # mmap = 9
   movq $-1, %r8     # fd = -1
   movq $0, %rdi     # address = null
-  movq $409600, %rsi # length = 100 * 4096 byte pages
+  movq $819200, %rsi # length = 200 * 4096 byte pages
   movq $3, %rdx     # prot = PROT_READ | PROT_WRITE
   movq $34, %r10    # flags = MAP_PRIVATE | MAP_ANONYMOUS
   movq $0, %r9      # offset = 0

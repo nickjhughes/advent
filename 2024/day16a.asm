@@ -75,8 +75,6 @@ end_of_input:
   imul %rdi, %rdi
   shl $2, %rdi
 
-  # call print_map
-
   # Dijkstra:
   # Each clear tile with the reindeer facing each of the 4 directions is a node, which we store
   # as the (index << 2) + (0b00, 0b01, 0b10, 0b11) for north, east, south, and west facing,
@@ -138,15 +136,6 @@ add_nodes_done:
   movq %r8, 64(%rbp) # Save queue size
 
 dijkstra_loop:
-  # u ← vertex in Q with minimum dist[u]
-  # remo ve u from Q
-  # 
-  # for each neighbor v of u still in Q:
-  #   alt ← dist[u] + Graph.Edges(u, v)
-  #   if alt < dist[v]:
-  #     dist[v] ← alt
-  #     prev[v] ← u
-
   movq 64(%rbp), %r8
   cmp $0, %r8
   je queue_empty
@@ -217,8 +206,9 @@ west:
   shr $2, %rdx
   dec %rdx
   # Check for wall
-  movq (%r12,%rdx,8), %rax
-  cmp $35, %rax # '#'
+  xor %rax, %rax
+  movb (%r12,%rdx,1), %al
+  cmp $35, %al # '#'
   je dijkstra_loop
   # Check if it's in the queue
   shl $2, %rdx
@@ -240,8 +230,9 @@ north:
   shr $2, %rdx
   sub %r9, %rdx
   # Check for wall
-  movq (%r12,%rdx,8), %rax
-  cmp $35, %rax # '#'
+  xor %rax, %rax
+  movb (%r12,%rdx,1), %al
+  cmp $35, %al # '#'
   je dijkstra_loop
   # Check if it's in the queue
   shl $2, %rdx
@@ -262,8 +253,9 @@ east:
   shr $2, %rdx
   inc %rdx
   # Check for wall
-  movq (%r12,%rdx,8), %rax
-  cmp $35, %rax # '#'
+  xor %rax, %rax
+  movb (%r12,%rdx,1), %al
+  cmp $35, %al # '#'
   je dijkstra_loop
   # Check if it's in the queue
   shl $2, %rdx
@@ -285,8 +277,9 @@ south:
   shr $2, %rdx
   add %r9, %rdx
   # Check for wall
-  movq (%r12,%rdx,8), %rax
-  cmp $35, %rax # '#'
+  xor %rax, %rax
+  movb (%r12,%rdx,1), %al
+  cmp $35, %al # '#'
   je dijkstra_loop
   # Check if it's in the queue
   shl $2, %rdx
@@ -305,27 +298,21 @@ south:
   jmp dijkstra_loop
 
 queue_empty:
-  # TODO: Calculate length of shortest path between start and end indices
-  xor %rax, %rax
+  # See which of the four end directions has the smallest distance
   movq 48(%rbp), %r11
-  shl $2, %r11 # TODO: This assumes we end facing north, need to fix that
-shortest_path_loop:
-  push %rax
-  movq %r11, %rax
-  call write_result_to_output
-  lea output, %rdi
-  call print
-  pop %rax
-  
-  add (%r13,%r11,8), %rax
-  movq (%r14,%r11,8), %r15
-  cmp $-1, %r15
-  je print_result
-  movq %r15, %r11
-  
-  jmp shortest_path_loop
-
-print_result:
+  shl $2, %r11
+  xor %rcx, %rcx
+  movq $-1, %rax
+dir_loop:
+  inc %r11
+  movq (%r13,%r11,8), %rdx
+  cmp %rdx, %rax
+  jb dir_next
+  movq %rdx, %rax
+dir_next:
+  inc %rcx
+  cmp $4, %rcx
+  jne dir_loop
   call write_result_to_output
   lea output, %rdi
   call print
