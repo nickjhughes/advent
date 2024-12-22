@@ -77,6 +77,36 @@ mmap_input_file:
   pop %rcx
   ret
 
+# Map a specific number of 4k pages via a MAP_ANONYMOUS call to mmap.
+# Number of pages passed via %rdi, memory address returned in %rax.
+mmap_pages:
+  push %rcx
+  push %r11
+  push %rdi
+  push %rsi
+  push %rdx
+  push %r10
+  push %r8
+  push %r9
+  movq $4096, %rsi
+  imul %rdi, %rsi    # length = %rsi * 4096 byte pages
+  movq $9, %rax      # mmap = 9
+  movq $0, %rdi      # address = null
+  movq $3, %rdx      # prot = PROT_READ | PROT_WRITE
+  movq $34, %r10     # flags = MAP_PRIVATE | MAP_ANONYMOUS
+  movq $-1, %r8      # fd = -1
+  movq $0, %r9       # offset = 0
+  syscall
+  pop %r9
+  pop %r8
+  pop %r10
+  pop %rdx
+  pop %rsi
+  pop %rdi
+  pop %r11
+  pop %rcx
+  ret
+
 # Map some memory via a MAP_ANONYMOUS call to mmap
 mmap_memory:
   push %rcx
@@ -87,13 +117,13 @@ mmap_memory:
   push %r10
   push %r8
   push %r9
-  movq $9, %rax     # mmap = 9
-  movq $-1, %r8     # fd = -1
-  movq $0, %rdi     # address = null
+  movq $9, %rax      # mmap = 9
+  movq $-1, %r8      # fd = -1
+  movq $0, %rdi      # address = null
   movq $819200, %rsi # length = 200 * 4096 byte pages
-  movq $3, %rdx     # prot = PROT_READ | PROT_WRITE
-  movq $34, %r10    # flags = MAP_PRIVATE | MAP_ANONYMOUS
-  movq $0, %r9      # offset = 0
+  movq $3, %rdx      # prot = PROT_READ | PROT_WRITE
+  movq $34, %r10     # flags = MAP_PRIVATE | MAP_ANONYMOUS
+  movq $0, %r9       # offset = 0
   syscall
   pop %r9
   pop %r8
