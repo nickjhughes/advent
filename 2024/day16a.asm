@@ -142,7 +142,7 @@ dijkstra_loop:
 
   call find_min_dist_node
   movq %rax, %rcx # Current node
-  
+
   # For each neighbour of index %rax, check if it's in the queue, and if so, calculate
   # alt distance = dist[%rax] + 1 or 1000 (depending on if its a move or a rotation)
   # If alt distance < dist[neighbour], set dist to alt and update prev[neighbour] to %rax
@@ -301,6 +301,7 @@ queue_empty:
   # See which of the four end directions has the smallest distance
   movq 48(%rbp), %r11
   shl $2, %r11
+  dec %r11
   xor %rcx, %rcx
   movq $-1, %rax
 dir_loop:
