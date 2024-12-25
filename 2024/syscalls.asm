@@ -6,24 +6,24 @@ exit:
 
 # Print the string at (%rdi) with length %rsi to stdout
 print:
-   push %rax
-   push %rcx
-   push %r11
-   push %rdi
-   push %rsi
-   push %rdx
-   movq $1, %rax   # write(2) = 1
-   movq %rsi, %rdx # count = %rsi
-   movq %rdi, %rsi # buf = %rdi
-   movq $1, %rdi   # fd = stdout
-   syscall
-   pop %rdx
-   pop %rsi
-   pop %rdi
-   pop %r11
-   pop %rcx
-   pop %rax
-   ret
+  push %rax
+  push %rcx
+  push %r11
+  push %rdi
+  push %rsi
+  push %rdx
+  movq $1, %rax   # write(2) = 1
+  movq %rsi, %rdx # count = %rsi
+  movq %rdi, %rsi # buf = %rdi
+  movq $1, %rdi   # fd = stdout
+  syscall
+  pop %rdx
+  pop %rsi
+  pop %rdi
+  pop %r11
+  pop %rcx
+  pop %rax
+  ret
 
 # Open the input file with null-terminated path $filename and return file descriptor in %rax
 open_input_file:
