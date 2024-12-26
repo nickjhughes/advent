@@ -11,6 +11,6 @@ My solutions to the [Advent of Code](https://adventofcode.com/) problems, variou
 | 2020 | 47/50      | Rust, Python    |
 | 2019 | 12/50      | Rust, C++       |
 | 2018 | 12/50      | Rust, Fortran   |
-| 2017 | 0/50       |                 |
+| 2017 | 2/50       | Typescript      |
 | 2016 | 46/50      | Python          |
 | 2015 | 39/50      | Python          |
