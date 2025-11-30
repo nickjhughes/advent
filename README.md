@@ -4,6 +4,7 @@ My solutions to the [Advent of Code](https://adventofcode.com/) problems, variou
 
 | Year | Completion | Languages       |
 | ---- | ---------- | --------------- |
+| 2025 | 0/50       | C# in Unity     |
 | 2024 | 41/50      | x86_64 Assembly |
 | 2023 | 50/50      | Rust            |
 | 2022 | 50/50      | Rust            |
